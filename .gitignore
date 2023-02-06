@@ -1,3 +1,6 @@
 data/INPAINTING/*
 __pycache__/
 *.ckpt
+logs/*
+data/inpainting_dataset_surrogate/*
+ldm/data/test_loader_inpaint/*

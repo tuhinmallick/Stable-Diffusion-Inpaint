@@ -8,10 +8,12 @@ model:
     timesteps: 1000
     loss_type: l1
     first_stage_key: image
-    cond_stage_key: masked_image
-    image_size: 64
+    cond_stage_key: masked_image # 4 channels
+    cond_stage_trainable: false 
+    image_size: 64 # feature map size
     channels: 3
-    concat_mode: true
+    concat_mode: true # there will be no context_dim specified in unet, 
+    # check configs/stable-diffusion/v1-inference.yaml for cross-attention adn context dim
     monitor: val/loss
     scheduler_config:
       target: ldm.lr_scheduler.LambdaWarmUpCosineScheduler
@@ -27,7 +29,7 @@ model:
       params:
         image_size: 64
         in_channels: 7 # image, masked image, mask
-        out_channels: 3
+        out_channels: 3 #FINAL IMAGE
         model_channels: 256
         attention_resolutions:
         - 8
@@ -48,7 +50,7 @@ model:
         n_embed: 8192
         monitor: val/rec_loss
         ddconfig:
-          attn_type: none
+          attn_type: none # concat mode
           double_z: false
           z_channels: 3
           resolution: 256
@@ -63,5 +65,20 @@ model:
           attn_resolutions: []
           dropout: 0.0
         lossconfig:
-          target: ldm.modules.losses.contperceptual.DummyLoss
+          target: torch.nn.Identity # as in other configs, i think that there is some skip mechanism to use MSE
     cond_stage_config: __is_first_stage__
+
+data:
+  target: main.DataModuleFromConfig
+  params:
+    batch_size: 48
+    num_workers: 5
+    wrap: false
+    train:
+      target: ldm.data.inpainting.InpaintingTrain
+      params:
+        size: 256
+    validation:
+      target: ldm.data.inpainting.InpaintingValidation
+      params:
+        size: 256

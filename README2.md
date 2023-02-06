@@ -5,6 +5,9 @@ from taming.modules.vqvae.quantize import VectorQuantizer2 as VectorQuantizer
 
 ```ImportError: cannot import name 'VectorQuantizer2'```: replace quantize.py in taming/modules/vqvae/quantize.py with [this](https://github.com/CompVis/taming-transformers/blob/master/taming/modules/vqvae/quantize.py)
 
+## Input image format
+
+b h w c ---> a causa del ldm/models/diffusion/ddpm.py get_inpt()
 
 ## Inpainting weights
 Taken from: https://github.com/CompVis/stable-diffusion/issues/17#issuecomment-1224165074
