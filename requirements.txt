@@ -1,0 +1,21 @@
+# pip install torch==1.10.1+cu102 torchvision==0.11.2+cu102 torchaudio==0.10.1 -f https://download.pytorch.org/whl/cu102/torch_stable.html
+pip install torch==1.8.1+cu101 torchvision==0.9.1+cu101 torchaudio==0.8.1 -f https://download.pytorch.org/whl/torch_stable.html
+
+# pip install git+https://github.com/CompVis/taming-transformers.git@master#egg=taming-transformers
+# pip install git+https://github.com/openai/CLIP.git@main#egg=clip
+omegaconf==2.1.1
+invisible-watermark
+numpy==1.19.5
+opencv-python==4.1.2.30
+diffusers 
+transformers==4.18
+protobuf==3.19
+einops==0.3.0 
+pudb==2019.2 
+albumentations==0.4.3 
+pytorch-lightning==1.4.2 
+torch-fidelity==0.3.0
+torchmetrics==0.6.0 
+kornia==0.6
+# imageio-ffmpeg==0.4.2
+# imageio==2.9.0

@@ -167,7 +167,7 @@ class DDIMSampler(object):
                       temperature=1., noise_dropout=0., score_corrector=None, corrector_kwargs=None,
                       unconditional_guidance_scale=1., unconditional_conditioning=None):
         b, *_, device = *x.shape, x.device
-
+        # print("P SAMPLE DDMI", x.shape, c.shape, t.shape)
         if unconditional_conditioning is None or unconditional_guidance_scale == 1.:
             e_t = self.model.apply_model(x, t, c)
         else:
@@ -193,6 +193,7 @@ class DDIMSampler(object):
 
         # current prediction for x_0
         pred_x0 = (x - sqrt_one_minus_at * e_t) / a_t.sqrt()
+
         if quantize_denoised:
             pred_x0, _, *_ = self.model.first_stage_model.quantize(pred_x0)
         # direction pointing to x_t

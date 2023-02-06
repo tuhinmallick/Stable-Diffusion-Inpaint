@@ -869,6 +869,8 @@ class LatentDiffusion(DDPM):
 
     def forward(self, x, c, *args, **kwargs):
         t = torch.randint(0, self.num_timesteps, (x.shape[0],), device=self.device).long()
+        # print("LATENT MODEL INPUT", x.shape, c.shape, t.shape)
+        # exit()
         if self.model.conditioning_key is not None:
             assert c is not None
             if self.cond_stage_trainable:
@@ -889,7 +891,8 @@ class LatentDiffusion(DDPM):
         return [rescale_bbox(b) for b in bboxes]
 
     def apply_model(self, x_noisy, t, cond, return_ids=False):
-
+        print("\nAPPLY LATENT DIFFUSION MODEL", x_noisy.shape, t.shape, cond.shape)
+        #exit()
         if isinstance(cond, dict):
             # hybrid case, cond is exptected to be a dict
             pass
