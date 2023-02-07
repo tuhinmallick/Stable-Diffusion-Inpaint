@@ -80,7 +80,15 @@ class DDIMSampler(object):
                ):
         if conditioning is not None:
             if isinstance(conditioning, dict):
-                cbs = conditioning[list(conditioning.keys())[0]].shape[0]
+                print("SAMPLING")
+                print(list(conditioning.keys()))
+                print(len(conditioning[list(conditioning.keys())[0]]))
+                print(conditioning[list(conditioning.keys())[0]][0].shape)
+                # TODO: add conditioning here
+                if isinstance(conditioning[list(conditioning.keys())[0]], list):
+                    cbs = conditioning[list(conditioning.keys())[0]][0].shape[0]
+                else:
+                    cbs = conditioning[list(conditioning.keys())[0]].shape[0]
                 if cbs != batch_size:
                     print(f"Warning: Got {cbs} conditionings but batch-size is {batch_size}")
             else:

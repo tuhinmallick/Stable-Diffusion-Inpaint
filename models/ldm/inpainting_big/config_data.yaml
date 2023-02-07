@@ -65,3 +65,18 @@ model:
         lossconfig:
           target: ldm.modules.losses.contperceptual.DummyLoss
     cond_stage_config: __is_first_stage__
+
+data:
+  target: main.DataModuleFromConfig
+  params:
+    batch_size: 48
+    num_workers: 5
+    wrap: false
+    train:
+      target: ldm.data.inpainting.InpaintingTrain
+      params:
+        size: 256
+    validation:
+      target: ldm.data.inpainting.InpaintingValidation
+      params:
+        size: 256

@@ -67,12 +67,19 @@ if __name__ == "__main__":
     print(f"Found {len(masks)} inputs.")
 
     # config = OmegaConf.load("models/ldm/inpainting_big/config.yaml")
+    # config = OmegaConf.load("configs/latent-diffusion/inpainting_runaway4_NOCLIP.yaml")
     config = OmegaConf.load("configs/latent-diffusion/inpainting_runaway.yaml")
-
+    print(config)
     model = instantiate_from_config(config.model)
-    model.load_state_dict(torch.load("models/ldm/inpainting_big/last.ckpt")["state_dict"],
+    print("Loadin modeling")
+    # model.load_state_dict(torch.load("models/ldm/inpainting_big/last.ckpt")["state_dict"],
+    #                        strict=False)
+
+    model.load_state_dict(torch.load("models/ldm/inpainting_big/model_compvis.ckpt")["state_dict"],
                            strict=False)
-    # print("Model loaded")
+    # model.load_state_dict(torch.load("models/ldm/inpainting_big/sd-v1-5-inpainting.ckpt")["state_dict"],
+    #                        strict=False)
+    print("Model loaded")
     # exit()
 
     #model = torch.load("models/ldm/inpainting_big/archive/data.pkl")
@@ -96,19 +103,19 @@ if __name__ == "__main__":
                 
                 # encode masked image and concat downsampled mask
                 c = model.cond_stage_model.encode(batch["masked_image"])
-                print(batch["masked_image"].shape)
-                print("\nSHAPE OF MASKED IMAGE ENCODED", c.shape)
+                # print(batch["masked_image"].shape)
+                # print("\nSHAPE OF MASKED IMAGE ENCODED", c.shape)
                 
                 cc = torch.nn.functional.interpolate(batch["mask"],
                                                      size=c.shape[-2:])
 
                 c = torch.cat((c, cc), dim=1)
 
-                print("SHAPE FED TO INPUT", c.shape)
+                # print("SHAPE FED TO INPUT", c.shape)
                 # shape = (c.shape[1]-2,)+c.shape[2:]
                 shape = (3,) + c.shape[2:]
 
-                print("SHAPE FED TO INPUT", shape)
+                # print("SHAPE FED TO INPUT", shape)
 
                 # print("\nSAMPLING\n")
                 

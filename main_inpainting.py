@@ -29,6 +29,7 @@ The config that matches such condition is reported in configs/latent-diffusion/i
 
 '''
 
+
 def get_parser(**parser_kwargs):
     def str2bool(v):
         if isinstance(v, bool):
@@ -461,7 +462,9 @@ if __name__ == "__main__":
     #           params:
     #               key: value
 
-    now = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+    # now = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+    now ="2023-02-07T13-57-20" # FIXED TO AVOID WASTING SPACE
+    
 
     # add cwd for convenience and to make classes in this file available when
     # running as `python main.py`
@@ -516,6 +519,8 @@ if __name__ == "__main__":
     try:
         # init and save configs
         configs = [OmegaConf.load(cfg) for cfg in opt.base]
+        # print(configs)
+        # exit()
         cli = OmegaConf.from_dotlist(unknown)
         config = OmegaConf.merge(*configs, cli)
         lightning_config = config.pop("lightning", OmegaConf.create())
@@ -537,6 +542,10 @@ if __name__ == "__main__":
 
         # model
         model = instantiate_from_config(config.model)
+        # CUSTOM MODEL CHECKPOINTING
+        model.load_state_dict(torch.load("models/ldm/inpainting_big/model_compvis.ckpt")["state_dict"],
+                           strict=False) 
+        print("Model loaded implicit")
 
         # trainer and callbacks
         trainer_kwargs = dict()
