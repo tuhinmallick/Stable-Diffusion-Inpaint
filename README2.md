@@ -36,4 +36,10 @@ target: ldm.models.diffusion.ddpm.LatentDiffusion
 Comunque bisogna fare un grosso merge di tutte quelle configurazioni e poi fare un training col main.py.
 
 
+## PROBLEMA
+sono riuscito a caricare i pesi del modello ma per partire da un resume mi richiedeva quelli del sampler ddpim, 
+che non sono stati rilasciati.
+
+
+## PROBLEMA 2
 

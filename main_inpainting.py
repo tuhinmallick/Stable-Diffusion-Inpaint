@@ -18,6 +18,8 @@ from pytorch_lightning.utilities import rank_zero_info
 
 from ldm.data.base import Txt2ImgIterableBaseDataset
 from ldm.util import instantiate_from_config
+from ldm.models.diffusion.ddim import DDIMSampler
+from inpaint_utils import make_batch
 
 '''
 Hypothesis:
@@ -542,9 +544,10 @@ if __name__ == "__main__":
 
         # model
         model = instantiate_from_config(config.model)
-        # CUSTOM MODEL CHECKPOINTING
+        # TODO: CUSTOM MODEL CHECKPOINTING
         model.load_state_dict(torch.load("models/ldm/inpainting_big/model_compvis.ckpt")["state_dict"],
-                           strict=False) 
+                           strict=False)
+       
         print("Model loaded implicit")
 
         # trainer and callbacks
@@ -720,15 +723,60 @@ if __name__ == "__main__":
                 import pudb;
                 pudb.set_trace()
 
-
         import signal
 
         signal.signal(signal.SIGUSR1, melk)
         signal.signal(signal.SIGUSR2, divein)
 
+        # TODO: TO TEST LOADED WEIGHTS
+        # PESI CARICATI CORRETTAMENTE, QUESTA E' LA PROVA
+        # sampler = DDIMSampler(model)
+        # with torch.no_grad():
+        #     with model.ema_scope():
+        #         image = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/INPAINTING/custom_inpainting/desk_pc_mouse2.png"
+        #         mask = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/INPAINTING/custom_inpainting/desk_pc_mouse2_mask.png"
+        #         texture = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/INPAINTING/custom_inpainting/texture.png"
+        #         batch = make_batch(image, mask, texture, device="cpu")
+                
+        #         # encode masked image and concat downsampled mask
+        #         c = model.cond_stage_model.encode(batch["masked_image"])
+                
+        #         cc = torch.nn.functional.interpolate(batch["mask"],
+        #                                             size=c.shape[-2:])
+
+        #         c = torch.cat((c, cc), dim=1)
+
+        #         # print("SHAPE FED TO INPUT", c.shape)
+        #         # shape = (c.shape[1]-2,)+c.shape[2:]
+        #         shape = (3,) + c.shape[2:]
+
+        #         # print("SHAPE FED TO INPUT", shape)
+
+        #         # print("\nSAMPLING\n")
+                
+        #         samples_ddim, _ = sampler.sample(S=50,
+        #                                         conditioning=c,
+        #                                         batch_size=c.shape[0],
+        #                                         shape=shape,
+        #                                         verbose=False)
+
+        #         x_samples_ddim = model.decode_first_stage(samples_ddim)
+
+        #         image = torch.clamp((batch["image"]+1.0)/2.0,
+        #                             min=0.0, max=1.0)
+        #         mask = torch.clamp((batch["mask"]+1.0)/2.0,
+        #                         min=0.0, max=1.0)
+        #         predicted_image = torch.clamp((x_samples_ddim+1.0)/2.0,
+        #                                     min=0.0, max=1.0)
+
+        #         inpainted = (1-mask)*image+mask*predicted_image
+        #         inpainted = inpainted.cpu().numpy().transpose(0,2,3,1)[0]*255
+        #         Image.fromarray(inpainted.astype(np.uint8)).save("testWEIGHTS.jpg")
+
         # run
         if opt.train:
             try:
+
                 trainer.fit(model, data)
             except Exception:
                 melk()
