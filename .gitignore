@@ -1,4 +1,5 @@
-data/INPAINTING/*
+data/INPAINTING/inpainting_examples/
+data/INPAINTING/output*/
 __pycache__/
 *.ckpt
 logs/*
