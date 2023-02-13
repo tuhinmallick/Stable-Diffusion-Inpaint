@@ -106,7 +106,7 @@ if __name__ == "__main__":
     with torch.no_grad():
         with model.ema_scope():
             for image, mask in tqdm(zip(images, masks)):
-                texture = "data/INPAINTING/custom_inpainting/texture_background.png"
+                texture = "data/INPAINTING/custom_inpainting/texture_cow.png"
                 prefix = os.path.basename(texture).split(".")[0]
                 outpath = os.path.join(opt.outdir, prefix + os.path.split(image)[1])
 

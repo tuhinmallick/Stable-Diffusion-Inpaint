@@ -10,7 +10,9 @@ model:
     first_stage_key: image
     cond_stage_key: masked_image # 4 channels
     cond_stage_trainable: false 
-    image_size: 64 # feature map size
+    #image_size: 64 # feature map size
+    # QUESTO DECIDE LA SIZE DEL RUMORE, QUA E' NECESSARIA METTERLA A 128 PERCHE' IN INFERENCE NORMALE NON VIENE UTILIZZATA MA DAL LOGGER SI
+    image_size: 128 # feature map size for 512 ---> l'hanno lasciata a 64 perchè loro hanno addestrato su 256? però in inference questo non viene minimamente usato, solo nei logger
     channels: 3
     concat_mode: true # there will be no context_dim specified in unet,
     # check configs/stable-diffusion/v1-inference.yaml for cross-attention adn context dim

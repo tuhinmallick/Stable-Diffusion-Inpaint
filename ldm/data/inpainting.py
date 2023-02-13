@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import PIL
-from PIL import Image
+from PIL import Image,ImageOps
 from torch.utils.data import Dataset
 from torchvision import transforms
 import pandas as pd
@@ -48,31 +48,42 @@ class InpaintingBase(Dataset):
         return self._length
 
     def _transform_and_normalize(self, image_path, mask_path):
-        image = Image.open(image_path)
-        image = image.convert("RGB")
-
+        image = Image.open(image_path).convert("RGB")
+        # data = np.array(image)
+        # print(data)
         mask = Image.open(mask_path)
 
         # mask = mask.convert("RGB")
         pil_mask = mask.convert('L')
-        black_image = Image.new('RGB', image.size)
-        masked_image = Image.composite(image, black_image, pil_mask)
+        
+        # PIL METHOD
+        # black_image = Image.new('RGB', image.size)
+
+        # invert mask, we want just the background
+        # pil_mask = ImageOps.invert(pil_mask)
+
+        # masked_image = Image.composite(image, black_image, pil_mask)
+
         # masked_image.save("masked_test.jpg")
 
-        masked_image = masked_image.convert("RGB")
+        # masked_image = masked_image.convert("RGB")
 
         # transpose because of ldm/models/diffusion/ddpm.py get_input()
 
         # image.save("before_transform.jpg")
+        
+        
         # Transformations
         image = self.transform(image)
-        image = rearrange(image, 'c h w -> h w c')
+        # image = rearrange(image, 'c h w -> h w c')
 
         pil_mask = self.transform_mask(pil_mask)
-        pil_mask = rearrange(pil_mask, 'c h w -> h w c')
+        # pil_mask = rearrange(pil_mask, 'c h w -> h w c')
 
-        masked_image = self.transform(masked_image)
-        masked_image = rearrange(masked_image, 'c h w -> h w c')
+        masked_image = (1-pil_mask)*image
+
+        # masked_image = self.transform(masked_image)
+        # masked_image = rearrange(masked_image, 'c h w -> h w c')
 
         return image, masked_image, pil_mask
 
@@ -86,8 +97,8 @@ class InpaintingBase(Dataset):
 
 
 class InpaintingTrain(InpaintingBase):
-    def __init__(self, **kwargs):
-        super().__init__(csv_file="data/inpainting_dataset_surrogate/dataset.csv", partition="train",data_root="data/inpainting_dataset_surrogate/images/",**kwargs)
+    def __init__(self, csv_file, data_root, **kwargs):
+        super().__init__(csv_file=csv_file, partition="train",data_root=data_root,**kwargs)
         self.transform = transforms.Compose([
                 transforms.Resize((self.size,self.size)),
                 transforms.ToTensor(),
@@ -102,8 +113,8 @@ class InpaintingTrain(InpaintingBase):
 
 
 class InpaintingValidation(InpaintingBase):
-    def __init__(self, **kwargs):
-        super().__init__(csv_file="data/inpainting_dataset_surrogate/dataset.csv", partition="validation", data_root="data/inpainting_dataset_surrogate/images/", **kwargs)
+    def __init__(self, csv_file,data_root, **kwargs):
+        super().__init__(csv_file=csv_file, partition="validation", data_root=data_root, **kwargs)
         self.transform = transforms.Compose([
                         transforms.Resize((self.size,self.size)),
                         transforms.ToTensor(),

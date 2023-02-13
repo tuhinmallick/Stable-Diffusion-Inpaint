@@ -24,7 +24,9 @@ from ldm.modules.distributions.distributions import normal_kl, DiagonalGaussianD
 from ldm.models.autoencoder import VQModelInterface, IdentityFirstStage, AutoencoderKL
 from ldm.modules.diffusionmodules.util import make_beta_schedule, extract_into_tensor, noise_like
 from ldm.models.diffusion.ddim import DDIMSampler
-
+from PIL import Image # TODO: messo solo per testing
+import cv2 
+from inpaint_utils import make_batch,sample_model_original
 
 __conditioning_keys__ = {'concat': 'c_concat',
                          'crossattn': 'c_crossattn',
@@ -330,7 +332,8 @@ class DDPM(pl.LightningModule):
         x = batch[k]
         if len(x.shape) == 3:
             x = x[..., None]
-        x = rearrange(x, 'b h w c -> b c h w')
+        # TODO: ATTENZIONE TOLTO REARRANGE
+        # x = rearrange(x, 'b h w c -> b c h w')
         x = x.to(memory_format=torch.contiguous_format).float()
         return x
 
@@ -598,7 +601,7 @@ class LatentDiffusion(DDPM):
             weighting = weighting * L_weighting
         return weighting
 
-    def get_fold_unfold(self, x, kernel_size, stride, uf=1, df=1):  # todo load once not every time, shorten code
+    def get_fold_unfold(self, x, kernel_size, stride, uf=1, df=1):  # load once not every time, shorten code
         """
         :param x: img of size (bs, c, h, w)
         :return: n img crops of size (n, bs, c, kernel_size[0], kernel_size[1])
@@ -897,11 +900,11 @@ class LatentDiffusion(DDPM):
             # hybrid case, cond is exptected to be a dict
             pass
         else:
+            # FUNZIONA UGUALE MA QUESTO DOVREBBE ENTRARE QUA, NON CI DOVREBBE ESSERE L'OUTPUT DI CROSS-ATTENTION, CAPIRE PERCHE'
             if not isinstance(cond, list):
                 cond = [cond]
             key = 'c_concat' if self.model.conditioning_key == 'concat' else 'c_crossattn'
             cond = {key: cond}
-
         if hasattr(self, "split_input_params"):
             assert len(cond) == 1  # todo can only deal with one conditioning atm
             assert not return_ids  
@@ -913,6 +916,7 @@ class LatentDiffusion(DDPM):
             fold, unfold, normalization, weighting = self.get_fold_unfold(x_noisy, ks, stride)
 
             z = unfold(x_noisy)  # (bn, nc * prod(**ks), L)
+            
             # Reshape to img shape
             z = z.view((z.shape[0], -1, ks[0], ks[1], z.shape[-1]))  # (bn, nc, ks[0], ks[1], L )
             z_list = [z[:, :, :, :, i] for i in range(z.shape[-1])]
@@ -987,6 +991,7 @@ class LatentDiffusion(DDPM):
             x_recon = fold(o) / normalization
 
         else:
+            ## GIUSTO PERCHE' QUA DENTRO LE COND SONO DUE LISTE, E QUANDO HO LA CHIAVE CONCAT NON USA LA PARTE DI CROSS ATTENTION
             x_recon = self.model(x_noisy, t, **cond)
 
         if isinstance(x_recon, tuple) and not return_ids:
@@ -1235,14 +1240,27 @@ class LatentDiffusion(DDPM):
                                   mask=mask, x0=x0)
 
     @torch.no_grad()
-    def sample_log(self,cond,batch_size,ddim, ddim_steps,**kwargs):
+    def sample_log(self,cond,batch_size,ddim, ddim_steps, custom = False, **kwargs):
 
         if ddim:
-            ddim_sampler = DDIMSampler(self)
-            shape = (self.channels, self.image_size, self.image_size)
-            samples, intermediates =ddim_sampler.sample(ddim_steps,batch_size,
-                                                        shape,cond,verbose=False,**kwargs)
-
+            if not custom:
+                ddim_sampler = DDIMSampler(self)
+                shape = (self.channels, self.image_size, self.image_size)
+                samples, intermediates = ddim_sampler.sample(ddim_steps,batch_size,
+                                                            shape,cond,verbose=False,**kwargs)
+            
+            else:
+                # TODO sample with custom function
+                # image = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/INPAINTING/custom_inpainting/desk_pc_mouse2.png"
+                # mask ="/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/INPAINTING/custom_inpainting/desk_pc_mouse2_mask.png"
+                image = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/INPAINTING/inpainting_examples/16693_12.png"
+                mask ="/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/INPAINTING/inpainting_examples/16693_12_mask.png"
+                device = next(self.parameters()).device
+                batch = make_batch(image, mask, device,resize_to = 512)
+                #### QUA FUNZIONA MANNAGGIA ALLA QUINDI LE RAPPRESENTAZIONI DATE OM èASTP AL PRECEDENTE DDIM SAMPLER SONO SBAGLIATE
+                #### LA DIFFERENZA STA NELLA CONCATENAZIONE UNICA DI UN INPUT, PRIMA C'ERA ANCHE LA CROSS-ATTENTION
+                samples, intermediates = sample_model_original(self, batch=batch, device=device, return_values=True)
+                #sample_model_original(self, batch=batch, steps=ddim_steps, device=device)
         else:
             samples, intermediates = self.sample(cond=cond, batch_size=batch_size,
                                                  return_intermediates=True,**kwargs)
@@ -1429,23 +1447,24 @@ Modified implementation to adapt at beginning only mask and masked image conditi
 TODO: expand to n image and masks or include LSTM.
 
 Original implementation: https://github.com/runwayml/stable-diffusion/blob/08ab4d326c96854026c4eb3454cd3b02109ee982/ldm/models/diffusion/ddpm.py#L1468
+
+QUESTA VERSIONE TOGLIE LA CROSS ATTENTION PERCHE' IN QUESTO CASO NON CI SERVE (NON STIAMO CONDIZIONANDO SU TESTO)
 """
 
 class LatentInpaintDiffusion(LatentDiffusion):
     """
-    can either run as pure inpainting model (only concat mode) or with mixed conditionings,
-    e.g. mask as concat and text via cross-attn.
+    can just run as pure inpainting model (only concat mode).
     To disable finetuning mode, set finetune_keys to None
      """
     def __init__(self,
                  finetune_keys=("model.diffusion_model.input_blocks.0.0.weight",
                                 "model_ema.diffusion_modelinput_blocks00weight"
                                 ),
-                 concat_keys=("mask", "masked_image"),
+                 concat_keys=("masked_image","mask"), # AS IN INFERENCE
                  masked_image_key="masked_image",
                  keep_finetune_dims=4,  # if model was trained without concat mode before and we would like to keep these channels
-                 c_concat_log_start=None, # to log reconstruction of c_concat codes
-                 c_concat_log_end=None,
+                 c_concat_log_start=0, # to log reconstruction of c_concat codes, first three channels in our case
+                 c_concat_log_end=3,
                  *args, **kwargs
                  ):
         ckpt_path = kwargs.pop("ckpt_path", None)
@@ -1471,8 +1490,13 @@ class LatentInpaintDiffusion(LatentDiffusion):
 
         assert exists(self.concat_keys)
         c_cat = list()
+        
+        # THE ORDER of self.concat_keys MUST BE AS IN INFERENCE
         for ck in self.concat_keys:
-            cc = rearrange(batch[ck], 'b h w c -> b c h w').to(memory_format=torch.contiguous_format).float()
+            # TODO: ATTENZIONE TOLTO REARRANGE
+
+            #cc = rearrange(batch[ck], 'b h w c -> b c h w').to(memory_format=torch.contiguous_format).float()
+            cc = batch[ck].to(memory_format=torch.contiguous_format).float()
             if bs is not None:
                 cc = cc[:bs]
                 cc = cc.to(self.device)
@@ -1483,13 +1507,17 @@ class LatentInpaintDiffusion(LatentDiffusion):
                 cc = self.get_first_stage_encoding(self.encode_first_stage(cc))
             c_cat.append(cc)
         c_cat = torch.cat(c_cat, dim=1)
-        all_conds = {"c_concat": [c_cat], "c_crossattn": [c]}
+        
+        # NO CROSS ATTENTION
+        all_conds = [c_cat]
+        
+        # all_conds = {"c_concat": [c_cat], "c_crossattn": [c]}
         if return_first_stage_outputs:
             return z, all_conds, x, xrec, xc
         return z, all_conds
 
     @torch.no_grad()
-    def log_images(self, batch, N=8, n_row=4, sample=True, ddim_steps=200, ddim_eta=1., return_keys=None,
+    def log_images(self, batch, N=8, n_row=4, sample=True, ddim_steps=50, ddim_eta=0, return_keys=None,
                    quantize_denoised=True, inpaint=True, plot_denoise_rows=False, plot_progressive_rows=True,
                    plot_diffusion_rows=True, unconditional_guidance_scale=1., unconditional_guidance_label=None,
                    use_ema_scope=True,
@@ -1499,25 +1527,14 @@ class LatentInpaintDiffusion(LatentDiffusion):
 
         log = dict()
         z, c, x, xrec, xc = self.get_input(batch, self.first_stage_key, bs=N, return_first_stage_outputs=True)
-        c_cat, c = c["c_concat"][0], c["c_crossattn"][0]
+        # c_cat, c = c["c_concat"][0], c["c_crossattn"][0]
+        c = c[0]
+        c_cat = c#no cross attention
+
         N = min(x.shape[0], N)
         n_row = min(x.shape[0], n_row)
         log["inputs"] = x
         log["reconstruction"] = xrec
-        if self.model.conditioning_key is not None:
-            if hasattr(self.cond_stage_model, "decode"):
-                xc = self.cond_stage_model.decode(c)
-                log["conditioning"] = xc
-            elif self.cond_stage_key in ["caption", "txt"]:
-                xc = log_txt_as_img((x.shape[2], x.shape[3]), batch[self.cond_stage_key], size=x.shape[2] // 25)
-                log["conditioning"] = xc
-            elif self.cond_stage_key == 'class_label':
-                xc = log_txt_as_img((x.shape[2], x.shape[3]), batch["human_label"], size=x.shape[2] // 25)
-                log['conditioning'] = xc
-            elif isimage(xc):
-                log["conditioning"] = xc
-            if ismap(xc):
-                log["original_conditioning"] = self.to_rgb(xc)
 
         if not (self.c_concat_log_start is None and self.c_concat_log_end is None):
             log["c_concat_decoded"] = self.decode_first_stage(c_cat[:,self.c_concat_log_start:self.c_concat_log_end])
@@ -1543,15 +1560,31 @@ class LatentInpaintDiffusion(LatentDiffusion):
         if sample:
             # get denoise row
             with ema_scope("Sampling"):
-                samples, z_denoise_row = self.sample_log(cond={"c_concat": [c_cat], "c_crossattn": [c]},
+                # samples, z_denoise_row = self.sample_log(cond={"c_concat": [c_cat], "c_crossattn": [c]},
+                samples, z_denoise_row = self.sample_log(cond=c_cat,
                                                          batch_size=N, ddim=use_ddim,
                                                          ddim_steps=ddim_steps, eta=ddim_eta)
+                
+                samples_custom, z_denoise_row_custom = self.sample_log(cond=c_cat,
+                                                         batch_size=N, ddim=use_ddim,
+                                                         ddim_steps=ddim_steps, eta=ddim_eta, custom=True)
                 # samples, z_denoise_row = self.sample(cond=c, batch_size=N, return_intermediates=True)
             x_samples = self.decode_first_stage(samples)
+            x_samples_custom = self.decode_first_stage(samples_custom)
+            
             log["samples"] = x_samples
+            log["samples_custom"] = x_samples_custom
+            
+            # predicted_image = torch.clamp((x_samples+1.0)/2.0,
+            #                                   min=0.0, max=1.0)
+            # inpainted = predicted_image.cpu().numpy().transpose(0,2,3,1)[0]*255
+            # Image.fromarray(inpainted.astype(np.uint8)).save("/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/test_inner_sample_generation.jpg")
+            
             if plot_denoise_rows:
                 denoise_grid = self._get_denoise_row_from_list(z_denoise_row)
                 log["denoise_row"] = denoise_grid
+                denoise_grid_custom = self._get_denoise_row_from_list(z_denoise_row_custom)
+                log["denoise_row_custom"] = denoise_grid_custom
 
         if unconditional_guidance_scale > 1.0:
             uc_cross = self.get_unconditional_conditioning(N, unconditional_guidance_label)
@@ -1567,31 +1600,7 @@ class LatentInpaintDiffusion(LatentDiffusion):
                 x_samples_cfg = self.decode_first_stage(samples_cfg)
                 log[f"samples_cfg_scale_{unconditional_guidance_scale:.2f}"] = x_samples_cfg
 
-        log["masked_image"] = rearrange(batch["masked_image"],
-                                        'b h w c -> b c h w').to(memory_format=torch.contiguous_format).float()
+        log["masked_image"] = batch["masked_image"].to(memory_format=torch.contiguous_format).float()
+        # log["masked_image"] = rearrange(batch["masked_image"],
+        #                                 'b h w c -> b c h w').to(memory_format=torch.contiguous_format).float()
         return log
-
-
-
-class Layout2ImgDiffusion(LatentDiffusion):
-    # TODO: move all layout-specific hacks to this class
-    def __init__(self, cond_stage_key, *args, **kwargs):
-        assert cond_stage_key == 'coordinates_bbox', 'Layout2ImgDiffusion only for cond_stage_key="coordinates_bbox"'
-        super().__init__(cond_stage_key=cond_stage_key, *args, **kwargs)
-
-    def log_images(self, batch, N=8, *args, **kwargs):
-        logs = super().log_images(batch=batch, N=N, *args, **kwargs)
-
-        key = 'train' if self.training else 'validation'
-        dset = self.trainer.datamodule.datasets[key]
-        mapper = dset.conditional_builders[self.cond_stage_key]
-
-        bbox_imgs = []
-        map_fn = lambda catno: dset.get_textual_label(dset.get_category_id(catno))
-        for tknzd_bbox in batch[self.cond_stage_key][:N]:
-            bboximg = mapper.plot(tknzd_bbox.detach().cpu(), map_fn, (256, 256))
-            bbox_imgs.append(bboximg)
-
-        cond_img = torch.stack(bbox_imgs, dim=0)
-        logs['bbox_image'] = cond_img
-        return logs

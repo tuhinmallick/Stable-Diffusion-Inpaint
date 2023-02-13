@@ -19,7 +19,7 @@ from pytorch_lightning.utilities import rank_zero_info
 from ldm.data.base import Txt2ImgIterableBaseDataset
 from ldm.util import instantiate_from_config
 from ldm.models.diffusion.ddim import DDIMSampler
-from inpaint_utils import make_batch
+from inpaint_utils import make_batch,sample_model_original
 
 '''
 Hypothesis:
@@ -262,7 +262,7 @@ class SetupCallback(Callback):
 
     def on_keyboard_interrupt(self, trainer, pl_module):
         if trainer.global_rank == 0:
-            print("Summoning checkpoint.")
+            print("Summoning checkpoint keyboard interrupt.")
             ckpt_path = os.path.join(self.ckptdir, "last.ckpt")
             trainer.save_checkpoint(ckpt_path)
 
@@ -276,8 +276,8 @@ class SetupCallback(Callback):
             if "callbacks" in self.lightning_config:
                 if 'metrics_over_trainsteps_checkpoint' in self.lightning_config['callbacks']:
                     os.makedirs(os.path.join(self.ckptdir, 'trainstep_checkpoints'), exist_ok=True)
-            print("Project config")
-            print(OmegaConf.to_yaml(self.config))
+            # print("Project config")
+            # print(OmegaConf.to_yaml(self.config))
             OmegaConf.save(self.config,
                            os.path.join(self.cfgdir, "{}-project.yaml".format(self.now)))
 
@@ -465,8 +465,13 @@ if __name__ == "__main__":
     #               key: value
 
     # now = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
-    now ="2023-02-07T13-57-20" # FIXED TO AVOID WASTING SPACE
+    # now ="2023-02-07T13-57-20" # FIXED TO AVOID WASTING SPACE
     
+    # now ="2023-02-08T13-57-20" # FIXED TO AVOID WASTING SPACE
+    # now ="2023-02-08NODECAY" # FIXED TO AVOID WASTING SPACE
+
+    # now ="2023-02-08NOWEIGHTCAY" # FIXED TO AVOID WASTING SPACE
+    now ="2023-02-08" # FIXED TO AVOID WASTING SPACE
 
     # add cwd for convenience and to make classes in this file available when
     # running as `python main.py`
@@ -476,6 +481,7 @@ if __name__ == "__main__":
     parser = get_parser()
     parser = Trainer.add_argparse_args(parser)
 
+    
     opt, unknown = parser.parse_known_args()
     if opt.name and opt.resume:
         raise ValueError(
@@ -516,7 +522,9 @@ if __name__ == "__main__":
 
     ckptdir = os.path.join(logdir, "checkpoints")
     cfgdir = os.path.join(logdir, "configs")
-    seed_everything(opt.seed)
+    # seed_everything(opt.seed)
+    # FIX BECAUSE DIFFERENT LOADERS HAS DIFFERENT SEEDS
+    seed_everything(42, workers=True)
 
     try:
         # init and save configs
@@ -530,6 +538,10 @@ if __name__ == "__main__":
         trainer_config = lightning_config.get("trainer", OmegaConf.create())
         # default to ddp
         trainer_config["accelerator"] = "ddp"
+        
+        # TODO: fix for deterministic training
+        trainer_config["deterministic"] = True
+
         for k in nondefault_trainer_args(opt):
             trainer_config[k] = getattr(opt, k)
         if not "gpus" in trainer_config:
@@ -544,11 +556,24 @@ if __name__ == "__main__":
 
         # model
         model = instantiate_from_config(config.model)
-        # TODO: CUSTOM MODEL CHECKPOINTING
-        model.load_state_dict(torch.load("models/ldm/inpainting_big/model_compvis.ckpt")["state_dict"],
-                           strict=False)
-       
-        print("Model loaded implicit")
+        
+        # TODO: CUSTOM MODEL CHECKPOINTING -- LOAD ONLY IF NO FINE-TUNING WAS DONE
+        if not opt.resume_from_checkpoint:
+            print("First time training, so finetuning by loaded model_compvis inpainting weights")
+            model.load_state_dict(torch.load("models/ldm/inpainting_big/model_compvis.ckpt")["state_dict"],
+                            strict=False)
+            # # TODO: TEST CHECK GOODNESS OF WEIGHTS
+            # device = "cuda:0"
+            # model = model.to(device)
+            # image = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/INPAINTING/inpainting_examples/8399166846_f6fb4e4b8e_k.png"
+            # mask ="/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/INPAINTING/inpainting_examples/8399166846_f6fb4e4b8e_k_mask.png"
+            
+            # batch = make_batch(image, mask, device=device)
+            # sample_model_original(model, batch, device=device)
+            # exit()
+
+
+        
 
         # trainer and callbacks
         trainer_kwargs = dict()
@@ -594,7 +619,7 @@ if __name__ == "__main__":
         if hasattr(model, "monitor"):
             print(f"Monitoring {model.monitor} as checkpoint metric.")
             default_modelckpt_cfg["params"]["monitor"] = model.monitor
-            default_modelckpt_cfg["params"]["save_top_k"] = 3
+            default_modelckpt_cfg["params"]["save_top_k"] = 0
 
         if "modelcheckpoint" in lightning_config:
             modelckpt_cfg = lightning_config.modelcheckpoint
@@ -602,13 +627,14 @@ if __name__ == "__main__":
             modelckpt_cfg =  OmegaConf.create()
         modelckpt_cfg = OmegaConf.merge(default_modelckpt_cfg, modelckpt_cfg)
         print(f"Merged modelckpt-cfg: \n{modelckpt_cfg}")
+        
         if version.parse(pl.__version__) < version.parse('1.4.0'):
             trainer_kwargs["checkpoint_callback"] = instantiate_from_config(modelckpt_cfg)
 
         # add callback which sets up log directory
         default_callbacks_cfg = {
             "setup_callback": {
-                "target": "main.SetupCallback",
+                "target": "main_inpainting.SetupCallback",
                 "params": {
                     "resume": opt.resume,
                     "now": now,
@@ -620,7 +646,7 @@ if __name__ == "__main__":
                 }
             },
             "image_logger": {
-                "target": "main.ImageLogger",
+                "target": "main_inpainting.ImageLogger",
                 "params": {
                     "batch_frequency": 750,
                     "max_images": 4,
@@ -628,14 +654,14 @@ if __name__ == "__main__":
                 }
             },
             "learning_rate_logger": {
-                "target": "main.LearningRateMonitor",
+                "target": "main_inpainting.LearningRateMonitor",
                 "params": {
                     "logging_interval": "step",
                     # "log_momentum": True
                 }
             },
             "cuda_callback": {
-                "target": "main.CUDACallback"
+                "target": "main_inpainting.CUDACallback"
             },
         }
         if version.parse(pl.__version__) >= version.parse('1.4.0'):
@@ -658,7 +684,9 @@ if __name__ == "__main__":
                          "verbose": True,
                          'save_top_k': -1,
                          'every_n_train_steps': 10000,
-                         'save_weights_only': True
+                        #  'save_weights_only': True
+                        # TODO: modified here
+                        'save_weights_only': False
                      }
                      }
             }
@@ -682,6 +710,7 @@ if __name__ == "__main__":
         # lightning still takes care of proper multiprocessing though
         data.prepare_data()
         data.setup()
+        
         print("#### Data #####")
         for k in data.datasets:
             print(f"{k}, {data.datasets[k].__class__.__name__}, {len(data.datasets[k])}")
@@ -698,6 +727,7 @@ if __name__ == "__main__":
             accumulate_grad_batches = 1
         print(f"accumulate_grad_batches = {accumulate_grad_batches}")
         lightning_config.trainer.accumulate_grad_batches = accumulate_grad_batches
+        
         if opt.scale_lr:
             model.learning_rate = accumulate_grad_batches * ngpu * bs * base_lr
             print(
@@ -713,7 +743,7 @@ if __name__ == "__main__":
         def melk(*args, **kwargs):
             # run all checkpoint hooks
             if trainer.global_rank == 0:
-                print("Summoning checkpoint.")
+                print("Summoning checkpoint melk.")
                 ckpt_path = os.path.join(ckptdir, "last.ckpt")
                 trainer.save_checkpoint(ckpt_path)
 
@@ -724,59 +754,12 @@ if __name__ == "__main__":
                 pudb.set_trace()
 
         import signal
-
         signal.signal(signal.SIGUSR1, melk)
         signal.signal(signal.SIGUSR2, divein)
-
-        # TODO: TO TEST LOADED WEIGHTS
-        # PESI CARICATI CORRETTAMENTE, QUESTA E' LA PROVA
-        # sampler = DDIMSampler(model)
-        # with torch.no_grad():
-        #     with model.ema_scope():
-        #         image = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/INPAINTING/custom_inpainting/desk_pc_mouse2.png"
-        #         mask = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/INPAINTING/custom_inpainting/desk_pc_mouse2_mask.png"
-        #         texture = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/INPAINTING/custom_inpainting/texture.png"
-        #         batch = make_batch(image, mask, texture, device="cpu")
-                
-        #         # encode masked image and concat downsampled mask
-        #         c = model.cond_stage_model.encode(batch["masked_image"])
-                
-        #         cc = torch.nn.functional.interpolate(batch["mask"],
-        #                                             size=c.shape[-2:])
-
-        #         c = torch.cat((c, cc), dim=1)
-
-        #         # print("SHAPE FED TO INPUT", c.shape)
-        #         # shape = (c.shape[1]-2,)+c.shape[2:]
-        #         shape = (3,) + c.shape[2:]
-
-        #         # print("SHAPE FED TO INPUT", shape)
-
-        #         # print("\nSAMPLING\n")
-                
-        #         samples_ddim, _ = sampler.sample(S=50,
-        #                                         conditioning=c,
-        #                                         batch_size=c.shape[0],
-        #                                         shape=shape,
-        #                                         verbose=False)
-
-        #         x_samples_ddim = model.decode_first_stage(samples_ddim)
-
-        #         image = torch.clamp((batch["image"]+1.0)/2.0,
-        #                             min=0.0, max=1.0)
-        #         mask = torch.clamp((batch["mask"]+1.0)/2.0,
-        #                         min=0.0, max=1.0)
-        #         predicted_image = torch.clamp((x_samples_ddim+1.0)/2.0,
-        #                                     min=0.0, max=1.0)
-
-        #         inpainted = (1-mask)*image+mask*predicted_image
-        #         inpainted = inpainted.cpu().numpy().transpose(0,2,3,1)[0]*255
-        #         Image.fromarray(inpainted.astype(np.uint8)).save("testWEIGHTS.jpg")
 
         # run
         if opt.train:
             try:
-
                 trainer.fit(model, data)
             except Exception:
                 melk()

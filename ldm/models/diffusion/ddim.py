@@ -4,7 +4,6 @@ import torch
 import numpy as np
 from tqdm import tqdm
 from functools import partial
-
 from ldm.modules.diffusionmodules.util import make_ddim_sampling_parameters, make_ddim_timesteps, noise_like, \
     extract_into_tensor
 
@@ -55,7 +54,7 @@ class DDIMSampler(object):
 
     @torch.no_grad()
     def sample(self,
-               S,
+               S,   
                batch_size,
                shape,
                conditioning=None,
@@ -78,13 +77,12 @@ class DDIMSampler(object):
                # this has to come in the same format as the conditioning, # e.g. as encoded tokens, ...
                **kwargs
                ):
+        # TODO: forzato
+        # S=50
         if conditioning is not None:
             if isinstance(conditioning, dict):
-                print("SAMPLING")
-                print(list(conditioning.keys()))
-                print(len(conditioning[list(conditioning.keys())[0]]))
-                print(conditioning[list(conditioning.keys())[0]][0].shape)
-                # TODO: add conditioning here
+                # print("SAMPLING")
+                # TODO: OK HO MODIFICATO MA STA SOLO CONTROLLANDO BATCH SIZE
                 if isinstance(conditioning[list(conditioning.keys())[0]], list):
                     cbs = conditioning[list(conditioning.keys())[0]][0].shape[0]
                 else:

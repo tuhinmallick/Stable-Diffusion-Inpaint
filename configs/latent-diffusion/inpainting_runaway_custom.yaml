@@ -81,14 +81,14 @@ data:
     train:
       target: ldm.data.inpainting.InpaintingTrain
       params:
-        csv_file: data/inpainting_dataset_surrogate/datasetplaces.csv
-        data_root: data/INPAINTING/inpainting_examples
+        csv_file: data/inpainting_dataset_surrogate/dataset.csv
+        data_root: data/INPAINTING/custom_inpainting
         size: 512
     validation:
       target: ldm.data.inpainting.InpaintingValidation
       params:
-        csv_file: data/inpainting_dataset_surrogate/datasetplaces.csv
-        data_root: data/INPAINTING/inpainting_examples
+        csv_file: data/inpainting_dataset_surrogate/dataset.csv
+        data_root: data/INPAINTING/custom_inpainting
         size: 512
 
 # callbacks:

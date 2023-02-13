@@ -5,3 +5,7 @@ __pycache__/
 logs/*
 data/inpainting_dataset_surrogate/*
 ldm/data/test_loader_inpaint/*
+*.jpg
+model_*.txt
+.idea/*
+.vscode/*

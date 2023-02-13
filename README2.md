@@ -43,3 +43,16 @@ che non sono stati rilasciati.
 
 ## PROBLEMA 2
 
+Unexpected key(s) in state_dict: "ddim_sigmas", "ddim_alphas", "ddim_alphas_prev", "ddim_sqrt_one_minus_alphas".
+
+In pratica nei pesi forniti da Stable Diffusion, mancano i pesi del sampler ddim, quindi del modello implicito più efficiente.
+Questo vuol dire che verranno trainati da zero anche facendo fine-tuning. 
+
+## Visualize Network
+
+https://github.com/szagoruyko/pytorchviz
+
+
+# SAVE ONLY LAST EPOCH
+
+default_modelckpt_cfg["params"]["save_top_k"] = 0

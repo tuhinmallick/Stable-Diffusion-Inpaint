@@ -9,33 +9,11 @@ sys.path.insert(
    1, "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint")
 from main import instantiate_from_config
 from ldm.models.diffusion.ddim import DDIMSampler
-from inpaint_utils import seed_everything
-
+from inpaint_utils import seed_everything, validate_state_dicts
+import json , cv2
+from torchvision.transforms import ToPILImage
+from inpaint_utils import make_batch
 seed_everything(42)
-
-def make_batch(image, mask, device):
-    image = np.array(Image.open(image).convert("RGB"))
-    image = image.astype(np.float32)/255.0
-    print("\n", image.shape)
-    image = image[None].transpose(0,3,1,2)
-    print(image.shape)
-
-    image = torch.from_numpy(image)
-
-    mask = np.array(Image.open(mask).convert("L"))
-    mask = mask.astype(np.float32)/255.0
-    mask = mask[None,None]
-    mask[mask < 0.5] = 0
-    mask[mask >= 0.5] = 1
-    mask = torch.from_numpy(mask)
-
-    masked_image = (1-mask)*image
-
-    batch = {"image": image, "mask": mask, "masked_image": masked_image}
-    for k in batch:
-        batch[k] = batch[k].to(device=device)
-        batch[k] = batch[k]*2.0-1.0
-    return batch
 
 
 if __name__ == "__main__":
@@ -61,21 +39,25 @@ if __name__ == "__main__":
 
     opt = parser.parse_args()
 
-    masks = sorted(glob.glob(os.path.join(opt.indir, "*_mask.png")))
+    # masks = sorted(glob.glob(os.path.join(opt.indir, "*_mask.*")))
+    masks = sorted(glob.glob(os.path.join(opt.indir, "16693_12_mask.*")))
+
     images = [x.replace("_mask.png", ".png") for x in masks]
     print(f"Found {len(masks)} inputs.")
 
-    config = OmegaConf.load("models/ldm/inpainting_big/config.yaml")
-
+    config = OmegaConf.load("configs/latent-diffusion/inpainting_runaway.yaml")
     model = instantiate_from_config(config.model)
-    model.load_state_dict(torch.load("models/ldm/inpainting_big/last.ckpt")["state_dict"],
+
+    print("Loading modeling")
+
+    state_dict_to_load = torch.load("models/ldm/inpainting_big/model_compvis.ckpt")["state_dict"]
+    # state_dict_to_load = torch.load("logs/2023-02-08PLACES_custom_training/checkpoints/last.ckpt")["state_dict"]
+    
+    model.load_state_dict(state_dict_to_load,
                            strict=False)
 
-    # COMPVIS ORIGINAL WEIGHTS
-    # model.load_state_dict(torch.load("models/ldm/inpainting_big/model_compvis.ckpt")["state_dict"],
-    #                        strict=False) # compvis weights
 
-    #model = torch.load("models/ldm/inpainting_big/archive/data.pkl")
+    print("Model loaded")
     
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     model = model.to(device)
@@ -87,28 +69,32 @@ if __name__ == "__main__":
         with model.ema_scope():
             for image, mask in tqdm(zip(images, masks)):
                 outpath = os.path.join(opt.outdir, os.path.split(image)[1])
-                batch = make_batch(image, mask, device=device)
+
+                batch = make_batch(image, mask, device=device, resize_to=512)
                 
-                # print(batch["image"].shape)
-                # exit()
                 # encode masked image and concat downsampled mask
                 c = model.cond_stage_model.encode(batch["masked_image"])
-                print("\nSHAPE OF MASKED IMAGE ENCODED", c.shape)
+                # print(batch["mask"])
+                
                 cc = torch.nn.functional.interpolate(batch["mask"],
                                                      size=c.shape[-2:])
-                print("\nSHAPE OF MASK INTERPOLATED", cc.shape)
-
+                # print(cc)
                 c = torch.cat((c, cc), dim=1)
 
-                shape = (c.shape[1]-1,)+c.shape[2:]
-                print(shape)
-                print("\nSAMPLING\n")
+                # print("SHAPE FED TO INPUT", c.shape)
+                # shape = (c.shape[1]-2,)+c.shape[2:]
+                shape = (3,) + c.shape[2:]
+
+                print("SHAPE FED TO INPUT", shape)
+                # print("\nSAMPLING\n")
+                
                 samples_ddim, _ = sampler.sample(S=opt.steps,
                                                  conditioning=c,
                                                  batch_size=c.shape[0],
                                                  shape=shape,
                                                  verbose=False)
-                print(samples_ddim.shape)
+                # print(samples_ddim.shape)
+                # exit()
 
                 x_samples_ddim = model.decode_first_stage(samples_ddim)
 
@@ -122,4 +108,3 @@ if __name__ == "__main__":
                 inpainted = (1-mask)*image+mask*predicted_image
                 inpainted = inpainted.cpu().numpy().transpose(0,2,3,1)[0]*255
                 Image.fromarray(inpainted.astype(np.uint8)).save(outpath)
-                #break

@@ -727,6 +727,12 @@ class UNetModel(nn.Module):
             assert y.shape == (x.shape[0],)
             emb = emb + self.label_emb(y)
 
+        #print("conditioning plugged in via crossattn -->", context)
+        
+        # print("\nUNET input emb \n", x.shape)
+        # print("\nUNET time emb \n", emb.shape)
+        # print("\nUNET Context\n", context)
+        #exit()
         h = x.type(self.dtype)
         for module in self.input_blocks:
             h = module(h, emb, context)
@@ -739,6 +745,9 @@ class UNetModel(nn.Module):
         if self.predict_codebook_ids:
             return self.id_predictor(h)
         else:
+            # out = self.out(h)
+            # print("\nOutput shape of UNET", out.shape)
+            # exit()
             return self.out(h)
 
 
@@ -957,5 +966,9 @@ class EncoderUNetModel(nn.Module):
             return self.out(h)
         else:
             h = h.type(x.dtype)
+            # out = self.out(h)
+            # print(out.shape)
+            # exit()
+            # return out
             return self.out(h)
 
