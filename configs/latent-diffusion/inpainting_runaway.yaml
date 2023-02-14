@@ -96,7 +96,7 @@ data:
 #     target: main.ImageLogger
 #     params:
 #       disabled: False
-#       batch_frequency: 1000
+#       # batch_frequency: 1000
 #       max_images: 4
 #       increase_log_steps: False
 #       log_first_step: False
@@ -109,4 +109,4 @@ data:
 #         unconditional_guidance_scale: 1.0
 #         unconditional_guidance_label: [""]
 #         ddim_steps: 50  # todo check these out for inpainting,
-#         ddim_eta: 1.0   # todo check these out for inpainting,
+#         ddim_eta: 0.0   # todo check these out for inpainting,

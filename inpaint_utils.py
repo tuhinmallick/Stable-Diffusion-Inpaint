@@ -32,8 +32,7 @@ def make_batch(image, mask, device="cuda:0", resize_to = None):
     return batch
 
 
-def sample_model_original(model, batch, steps = 50, device = "cuda:0", return_values = False, out_path = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/TEST_CUSTOM_IN_TRAINING.png"):
-    sampler = DDIMSampler(model)
+def sample_model_original(model, ddim_sampler, batch, steps = 50, device = "cuda:0", return_values = False, out_path = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/TEST_CUSTOM_IN_TRAINING.png"):
     # print(sampler)
     # exit()
     with torch.no_grad():
@@ -57,7 +56,7 @@ def sample_model_original(model, batch, steps = 50, device = "cuda:0", return_va
             # print("SHAPE FED TO INPUT", shape)
             # print("\nSAMPLING\n")
             
-            samples_ddim, intermediate = sampler.sample(S=steps,
+            samples_ddim, intermediate = ddim_sampler.sample(S=steps,
                                                 conditioning=c,
                                                 batch_size=c.shape[0],
                                                 shape=shape,
@@ -122,5 +121,7 @@ def validate_state_dicts(model_state_dict_1, model_state_dict_2):
             v_2 = v_2.to("cuda:0" if torch.cuda.is_available() else "cpu")
 
         if not torch.allclose(v_1, v_2):
-            print(f"Tensor mismatch: {v_1} vs {v_2}")
-            return False
+            print("different at k_1 %s" % k_1)
+            if "model.diffusion_model.out." in k_1:
+                print(f"Tensor mismatch: {v_1} vs {v_2}")
+            # return False

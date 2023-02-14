@@ -13,6 +13,7 @@ import pytorch_lightning as pl
 from torch.optim.lr_scheduler import LambdaLR
 from einops import rearrange, repeat
 from contextlib import contextmanager
+import contextlib
 from functools import partial
 from tqdm import tqdm
 from torchvision.utils import make_grid
@@ -25,7 +26,8 @@ from ldm.models.autoencoder import VQModelInterface, IdentityFirstStage, Autoenc
 from ldm.modules.diffusionmodules.util import make_beta_schedule, extract_into_tensor, noise_like
 from ldm.models.diffusion.ddim import DDIMSampler
 from PIL import Image # TODO: messo solo per testing
-import cv2 
+import cv2
+from pytorch_lightning import seed_everything
 from inpaint_utils import make_batch,sample_model_original
 
 __conditioning_keys__ = {'concat': 'c_concat',
@@ -75,6 +77,11 @@ class DDPM(pl.LightningModule):
                  logvar_init=0.,
                  ):
         super().__init__()
+        
+        ################################## TODO: automatic optimization by me 
+        self.automatic_optimization = False
+        
+        ##################################
         assert parameterization in ["eps", "x0"], 'currently only supporting "eps" and "x0"'
         self.parameterization = parameterization
         print(f"{self.__class__.__name__}: Running in {self.parameterization}-prediction mode")
@@ -345,14 +352,34 @@ class DDPM(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         loss, loss_dict = self.shared_step(batch)
 
+        opt = self.optimizers()
+        opt.zero_grad()
+        
+        self.manual_backward(loss)
+        # a = opt.param_groups[0]['params'][0].grad
+
+        opt.step()
+        # # accumulate gradients of N batches
+        # if (batch_idx + 1) % N == 0:
+        #     opt.step()
+        #     opt.zero_grad()
+        
         self.log_dict(loss_dict, prog_bar=True,
                       logger=True, on_step=True, on_epoch=True)
 
         self.log("global_step", self.global_step,
                  prog_bar=True, logger=True, on_step=True, on_epoch=False)
-
+        # print("-------GRADIENT RECAP-------")
+        # for n,p in self.named_parameters():
+        #     if p.requires_grad:
+        #         print(n)
+        #         print(p.grad)
+        #         break
+                
         if self.use_scheduler:
             lr = self.optimizers().param_groups[0]['lr']
+            print("ACTUAL LEARNING RATE %s" % lr)
+            self.lr_schedulers().step()
             self.log('lr_abs', lr, prog_bar=True, logger=True, on_step=True, on_epoch=False)
 
         return loss
@@ -480,6 +507,7 @@ class LatentDiffusion(DDPM):
     @torch.no_grad()
     def on_train_batch_start(self, batch, batch_idx, dataloader_idx):
         # only for very first batch
+        # NON ENTRA QUA
         if self.scale_by_std and self.current_epoch == 0 and self.global_step == 0 and batch_idx == 0 and not self.restarted_from_ckpt:
             assert self.scale_factor == 1., 'rather not use custom rescaling and std-rescaling simultaneously'
             # set rescale weight to 1./std of encodings
@@ -552,6 +580,7 @@ class LatentDiffusion(DDPM):
         return self.scale_factor * z
 
     def get_learned_conditioning(self, c):
+        # fa conditioning solo su masked image e non sulla mask
         if self.cond_stage_forward is None:
             if hasattr(self.cond_stage_model, 'encode') and callable(self.cond_stage_model.encode):
                 c = self.cond_stage_model.encode(c)
@@ -656,7 +685,7 @@ class LatentDiffusion(DDPM):
     @torch.no_grad()
     def get_input(self, batch, k, return_first_stage_outputs=False, force_c_encode=False,
                   cond_key=None, return_original_cond=False, bs=None):
-        x = super().get_input(batch, k)
+        x = super().get_input(batch, k) # prende solo input, in questo caso è l'immagine originale senza maschere
         if bs is not None:
             x = x[:bs]
         x = x.to(self.device)
@@ -1241,25 +1270,26 @@ class LatentDiffusion(DDPM):
 
     @torch.no_grad()
     def sample_log(self,cond,batch_size,ddim, ddim_steps, custom = False, **kwargs):
-
+        seed_everything(42, workers=True)
+        
         if ddim:
+            ddim_sampler = DDIMSampler(self)
+            # with torch.no_grad():
+            #     with self.ema_scope():
             if not custom:
-                ddim_sampler = DDIMSampler(self)
                 shape = (self.channels, self.image_size, self.image_size)
                 samples, intermediates = ddim_sampler.sample(ddim_steps,batch_size,
                                                             shape,cond,verbose=False,**kwargs)
             
             else:
                 # TODO sample with custom function
-                # image = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/INPAINTING/custom_inpainting/desk_pc_mouse2.png"
-                # mask ="/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/INPAINTING/custom_inpainting/desk_pc_mouse2_mask.png"
                 image = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/INPAINTING/inpainting_examples/16693_12.png"
                 mask ="/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/INPAINTING/inpainting_examples/16693_12_mask.png"
                 device = next(self.parameters()).device
                 batch = make_batch(image, mask, device,resize_to = 512)
                 #### QUA FUNZIONA MANNAGGIA ALLA QUINDI LE RAPPRESENTAZIONI DATE OM èASTP AL PRECEDENTE DDIM SAMPLER SONO SBAGLIATE
                 #### LA DIFFERENZA STA NELLA CONCATENAZIONE UNICA DI UN INPUT, PRIMA C'ERA ANCHE LA CROSS-ATTENTION
-                samples, intermediates = sample_model_original(self, batch=batch, device=device, return_values=True)
+                samples, intermediates = sample_model_original(self, ddim_sampler = ddim_sampler, batch=batch, device=device, return_values=True)
                 #sample_model_original(self, batch=batch, steps=ddim_steps, device=device)
         else:
             samples, intermediates = self.sample(cond=cond, batch_size=batch_size,
@@ -1478,8 +1508,8 @@ class LatentInpaintDiffusion(LatentDiffusion):
         self.c_concat_log_start = c_concat_log_start
         self.c_concat_log_end = c_concat_log_end
         # if exists(self.finetune_keys): assert exists(ckpt_path), 'can only finetune from a given checkpoint'
-        # if exists(ckpt_path):
-        #     self.init_from_ckpt(ckpt_path, ignore_keys)
+        if exists(ckpt_path):
+            self.init_from_ckpt(ckpt_path, ignore_keys)
         
     @torch.no_grad()
     def get_input(self, batch, k, cond_key=None, bs=None, return_first_stage_outputs=False):
@@ -1522,7 +1552,8 @@ class LatentInpaintDiffusion(LatentDiffusion):
                    plot_diffusion_rows=True, unconditional_guidance_scale=1., unconditional_guidance_label=None,
                    use_ema_scope=True,
                    **kwargs):
-        ema_scope = self.ema_scope if use_ema_scope else nullcontext
+        # ema_scope = self.ema_scope if use_ema_scope else nullcontext
+        ema_scope =  self.ema_scope if use_ema_scope else contextlib.suppress
         use_ddim = ddim_steps is not None
 
         log = dict()
@@ -1565,40 +1596,32 @@ class LatentInpaintDiffusion(LatentDiffusion):
                                                          batch_size=N, ddim=use_ddim,
                                                          ddim_steps=ddim_steps, eta=ddim_eta)
                 
-                samples_custom, z_denoise_row_custom = self.sample_log(cond=c_cat,
-                                                         batch_size=N, ddim=use_ddim,
-                                                         ddim_steps=ddim_steps, eta=ddim_eta, custom=True)
+                # samples_custom, z_denoise_row_custom = self.sample_log(cond=c_cat,
+                #                                          batch_size=N, ddim=use_ddim,
+                #                                          ddim_steps=ddim_steps, eta=ddim_eta, custom=True)
+                
+                # CHECK SEED
+                # samples_custom2, z_denoise_row_custom2 = self.sample_log(cond=c_cat,
+                #                                          batch_size=N, ddim=use_ddim,
+                #                                          ddim_steps=ddim_steps, eta=ddim_eta, custom=True)
+                
                 # samples, z_denoise_row = self.sample(cond=c, batch_size=N, return_intermediates=True)
             x_samples = self.decode_first_stage(samples)
-            x_samples_custom = self.decode_first_stage(samples_custom)
-            
+            # x_samples_custom = self.decode_first_stage(samples_custom)
+            # x_samples_custom2 = self.decode_first_stage(samples_custom2)
+
             log["samples"] = x_samples
-            log["samples_custom"] = x_samples_custom
+            # log["samples_custom"] = x_samples_custom
+            # log["samples_custom2"] = x_samples_custom2
             
-            # predicted_image = torch.clamp((x_samples+1.0)/2.0,
-            #                                   min=0.0, max=1.0)
-            # inpainted = predicted_image.cpu().numpy().transpose(0,2,3,1)[0]*255
-            # Image.fromarray(inpainted.astype(np.uint8)).save("/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/test_inner_sample_generation.jpg")
-            
+           
             if plot_denoise_rows:
                 denoise_grid = self._get_denoise_row_from_list(z_denoise_row)
                 log["denoise_row"] = denoise_grid
-                denoise_grid_custom = self._get_denoise_row_from_list(z_denoise_row_custom)
-                log["denoise_row_custom"] = denoise_grid_custom
-
-        if unconditional_guidance_scale > 1.0:
-            uc_cross = self.get_unconditional_conditioning(N, unconditional_guidance_label)
-            uc_cat = c_cat
-            uc_full = {"c_concat": [uc_cat], "c_crossattn": [uc_cross]}
-            with ema_scope("Sampling with classifier-free guidance"):
-                samples_cfg, _ = self.sample_log(cond={"c_concat": [c_cat], "c_crossattn": [c]},
-                                                 batch_size=N, ddim=use_ddim,
-                                                 ddim_steps=ddim_steps, eta=ddim_eta,
-                                                 unconditional_guidance_scale=unconditional_guidance_scale,
-                                                 unconditional_conditioning=uc_full,
-                                                 )
-                x_samples_cfg = self.decode_first_stage(samples_cfg)
-                log[f"samples_cfg_scale_{unconditional_guidance_scale:.2f}"] = x_samples_cfg
+                # denoise_grid_custom = self._get_denoise_row_from_list(z_denoise_row_custom)
+                # log["denoise_row_custom"] = denoise_grid_custom
+                # denoise_grid_custom2 = self._get_denoise_row_from_list(z_denoise_row_custom2)
+                # log["denoise_row_custom2"] = denoise_grid_custom2
 
         log["masked_image"] = batch["masked_image"].to(memory_format=torch.contiguous_format).float()
         # log["masked_image"] = rearrange(batch["masked_image"],

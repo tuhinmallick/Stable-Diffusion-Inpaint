@@ -9,7 +9,7 @@ from omegaconf import OmegaConf
 from torch.utils.data import random_split, DataLoader, Dataset, Subset
 from functools import partial
 from PIL import Image
-
+import traceback
 from pytorch_lightning import seed_everything
 from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint, Callback, LearningRateMonitor
@@ -18,8 +18,8 @@ from pytorch_lightning.utilities import rank_zero_info
 
 from ldm.data.base import Txt2ImgIterableBaseDataset
 from ldm.util import instantiate_from_config
-from ldm.models.diffusion.ddim import DDIMSampler
-from inpaint_utils import make_batch,sample_model_original
+# from ldm.models.diffusion.ddim import DDIMSampler
+# from inpaint_utils import make_batch,sample_model_original
 
 '''
 Hypothesis:
@@ -558,10 +558,10 @@ if __name__ == "__main__":
         model = instantiate_from_config(config.model)
         
         # TODO: CUSTOM MODEL CHECKPOINTING -- LOAD ONLY IF NO FINE-TUNING WAS DONE
-        if not opt.resume_from_checkpoint:
-            print("First time training, so finetuning by loaded model_compvis inpainting weights")
-            model.load_state_dict(torch.load("models/ldm/inpainting_big/model_compvis.ckpt")["state_dict"],
-                            strict=False)
+        # if not opt.resume_from_checkpoint:
+        #     print("First time training, so finetuning by loaded model_compvis inpainting weights")
+            # model.load_state_dict(torch.load("models/ldm/inpainting_big/model_compvis.ckpt")["state_dict"],
+            #                 strict=False)
             # # TODO: TEST CHECK GOODNESS OF WEIGHTS
             # device = "cuda:0"
             # model = model.to(device)
@@ -571,9 +571,6 @@ if __name__ == "__main__":
             # batch = make_batch(image, mask, device=device)
             # sample_model_original(model, batch, device=device)
             # exit()
-
-
-        
 
         # trainer and callbacks
         trainer_kwargs = dict()
@@ -612,14 +609,16 @@ if __name__ == "__main__":
             "params": {
                 "dirpath": ckptdir,
                 "filename": "{epoch:06}",
-                "verbose": True,
+                "mode": "min", # WE ARE MONITORING THE LOSS
+                #"filename": "{best:06}",
+                "verbose": True, # Mettere a false
                 "save_last": True,
             }
         }
         if hasattr(model, "monitor"):
             print(f"Monitoring {model.monitor} as checkpoint metric.")
             default_modelckpt_cfg["params"]["monitor"] = model.monitor
-            default_modelckpt_cfg["params"]["save_top_k"] = 0
+            default_modelckpt_cfg["params"]["save_top_k"] = 2
 
         if "modelcheckpoint" in lightning_config:
             modelckpt_cfg = lightning_config.modelcheckpoint
@@ -684,9 +683,9 @@ if __name__ == "__main__":
                          "verbose": True,
                          'save_top_k': -1,
                          'every_n_train_steps': 10000,
-                        #  'save_weights_only': True
-                        # TODO: modified here
-                        'save_weights_only': False
+                         'save_weights_only': True
+                        # # TODO: modified here
+                        # 'save_weights_only': False
                      }
                      }
             }
@@ -762,19 +761,23 @@ if __name__ == "__main__":
             try:
                 trainer.fit(model, data)
             except Exception:
+                print(traceback.print_exc())
+                exit()
                 melk()
                 raise
         if not opt.no_test and not trainer.interrupted:
             trainer.test(model, data)
     except Exception:
-        if opt.debug and trainer.global_rank == 0:
-            try:
-                import pudb as debugger
-            except ImportError:
-                import pdb as debugger
-            debugger.post_mortem()
-        raise
+        print(traceback.print_exc())
+        # if opt.debug: #and trainer.global_rank == 0:
+        #     try:
+        #         import pudb as debugger
+        #     except ImportError:
+        #         import pdb as debugger
+        #     debugger.post_mortem()
+        # raise
     finally:
+        exit()
         # move newly created debug project to debug_runs
         if opt.debug and not opt.resume and trainer.global_rank == 0:
             dst, name = os.path.split(logdir)

@@ -8,6 +8,7 @@ import pandas as pd
 from torch.utils.data import DataLoader
 import torch
 from einops import rearrange
+import cv2 
 
 class InpaintingBase(Dataset):
     def __init__(self,
@@ -21,6 +22,7 @@ class InpaintingBase(Dataset):
         self.csv_df = pd.read_csv(csv_file)
         self.csv_df = self.csv_df[self.csv_df["partition"]==partition] # filter partition
         self._length = len(self.csv_df)
+        
         self.data_root = data_root
         self.size = size
         self.transform = None
@@ -32,7 +34,6 @@ class InpaintingBase(Dataset):
                               "lanczos": PIL.Image.LANCZOS,
                               }[interpolation]
 
-        self._length = len(self.csv_df)
         self.image_paths = self.csv_df["image_path"]
         self.mask_image = self.csv_df["mask_path"]
         self.labels = {
@@ -87,13 +88,53 @@ class InpaintingBase(Dataset):
 
         return image, masked_image, pil_mask
 
+    def _transform_and_normalize_inference(self, image_path, mask_path, resize_to):
+        image = np.array(Image.open(image_path).convert("RGB"))
+        
+        if image.shape[0]!=resize_to or image.shape[1]!=resize_to:
+            image = cv2.resize(src=image, dsize=(resize_to,resize_to), interpolation = cv2.INTER_AREA)
+        image = image.astype(np.float32)/255.0
+
+        image = image[None].transpose(0,3,1,2)
+        image = torch.from_numpy(image)
+
+        mask = np.array(Image.open(mask_path).convert("L"))
+        
+        if mask.shape[0]!=resize_to or mask.shape[1]!=resize_to:
+            mask = cv2.resize(src=mask, dsize=(resize_to,resize_to), interpolation = cv2.INTER_AREA)
+        mask = mask.astype(np.float32)/255.0
+
+        mask = mask[None,None]
+        mask[mask < 0.5] = 0
+        mask[mask >= 0.5] = 1
+        mask = torch.from_numpy(mask)
+
+        masked_image = (1-mask)*image
+
+        batch = {"image": image, "mask": mask, "masked_image": masked_image}
+
+        for k in batch:
+            batch[k] = batch[k]*2.0-1.0
+            if k=="mask":
+                batch[k] = torch.squeeze(batch[k], dim=1) # we are in get item here, so one at a time
+            else:
+                batch[k] = torch.squeeze(batch[k], dim=0)
+        return batch
+
     def __getitem__(self, i):
-        example = dict((k, self.labels[k][i]) for k in self.labels)
-        image,masked_image, mask = self._transform_and_normalize(example["file_path_"],example["file_path_mask_"])
-        example["image"] = image
-        example["masked_image"] = masked_image
-        example["mask"] = mask
-        return example
+        # example = dict((k, self.labels[k][i]) for k in self.labels)
+        # image,masked_image, mask = self._transform_and_normalize(example["file_path_"],example["file_path_mask_"])
+        # example["image"] = image
+        # example["masked_image"] = masked_image
+        # example["mask"] = mask
+        
+        example2 = dict((k, self.labels[k][i]) for k in self.labels)
+
+        add_dict = self._transform_and_normalize_inference(example2["file_path_"],example2["file_path_mask_"], resize_to=self.size)
+        
+        example2.update(add_dict)
+
+        return example2
 
 
 class InpaintingTrain(InpaintingBase):

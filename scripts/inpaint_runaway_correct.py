@@ -17,6 +17,7 @@ seed_everything(42)
 
 
 if __name__ == "__main__":
+    
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--indir",
@@ -48,23 +49,37 @@ if __name__ == "__main__":
     config = OmegaConf.load("configs/latent-diffusion/inpainting_runaway.yaml")
     model = instantiate_from_config(config.model)
 
-    print("Loading modeling")
+    # weight_path_old = "logs/2023-02-08_custom_place_training_different_sampler/checkpoints/last.ckpt"
 
-    state_dict_to_load = torch.load("models/ldm/inpainting_big/model_compvis.ckpt")["state_dict"]
-    # state_dict_to_load = torch.load("logs/2023-02-08PLACES_custom_training/checkpoints/last.ckpt")["state_dict"]
+    weight_path_old = "models/ldm/inpainting_big/last.ckpt"
+
+    # weight_path_new = "logs/2023-02-08_custom_place_training_different_sampler/checkpoints/epoch=000023.ckpt"
+
+    # weight_path_old = "models/ldm/inpainting_big/last.ckpt"
+
+    # weight_path_new = "models/ldm/inpainting_big/model_compvis.ckpt"
+
+    print("Loading modeling from %s" % weight_path_old)
+
+    state_dict_to_load = torch.load(weight_path_old)["state_dict"]
+
+    # state_dict_to_load_old = torch.load(weight_path_old)["state_dict"]
     
+    
+    # validate_state_dicts(state_dict_to_load_old,state_dict_to_load)
+    
+    # exit()
     model.load_state_dict(state_dict_to_load,
                            strict=False)
 
-
-    print("Model loaded")
     
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    device = torch.device("cuda:1") if torch.cuda.is_available() else torch.device("cpu")
     model = model.to(device)
 
     sampler = DDIMSampler(model)
 
     os.makedirs(opt.outdir, exist_ok=True)
+    
     with torch.no_grad():
         with model.ema_scope():
             for image, mask in tqdm(zip(images, masks)):
@@ -74,6 +89,7 @@ if __name__ == "__main__":
                 
                 # encode masked image and concat downsampled mask
                 c = model.cond_stage_model.encode(batch["masked_image"])
+               
                 # print(batch["mask"])
                 
                 cc = torch.nn.functional.interpolate(batch["mask"],
@@ -107,4 +123,5 @@ if __name__ == "__main__":
 
                 inpainted = (1-mask)*image+mask*predicted_image
                 inpainted = inpainted.cpu().numpy().transpose(0,2,3,1)[0]*255
+                print("Save in %s" % outpath)
                 Image.fromarray(inpainted.astype(np.uint8)).save(outpath)
