@@ -370,6 +370,8 @@ class ImageLogger(Callback):
                 if isinstance(images[k], torch.Tensor):
                     images[k] = images[k].detach().cpu()
                     if self.clamp:
+                        # images[k] = torch.clamp((images[k]+1.0)/2.0,
+                        #                       min=0.0, max=1.0) 
                         images[k] = torch.clamp(images[k], -1., 1.)
 
             self.log_local(pl_module.logger.save_dir, split, images,
@@ -522,9 +524,9 @@ if __name__ == "__main__":
 
     ckptdir = os.path.join(logdir, "checkpoints")
     cfgdir = os.path.join(logdir, "configs")
-    # seed_everything(opt.seed)
+    seed_everything(opt.seed, workers=True)
     # FIX BECAUSE DIFFERENT LOADERS HAS DIFFERENT SEEDS
-    seed_everything(42, workers=True)
+    # seed_everything(42, workers=True)
 
     try:
         # init and save configs
@@ -538,6 +540,8 @@ if __name__ == "__main__":
         trainer_config = lightning_config.get("trainer", OmegaConf.create())
         # default to ddp
         trainer_config["accelerator"] = "ddp"
+        # trainer_config["accelerator"] = "gpu"
+
         
         # TODO: fix for deterministic training
         trainer_config["deterministic"] = True
@@ -556,22 +560,8 @@ if __name__ == "__main__":
 
         # model
         model = instantiate_from_config(config.model)
-        
-        # TODO: CUSTOM MODEL CHECKPOINTING -- LOAD ONLY IF NO FINE-TUNING WAS DONE
-        # if not opt.resume_from_checkpoint:
-        #     print("First time training, so finetuning by loaded model_compvis inpainting weights")
-            # model.load_state_dict(torch.load("models/ldm/inpainting_big/model_compvis.ckpt")["state_dict"],
-            #                 strict=False)
-            # # TODO: TEST CHECK GOODNESS OF WEIGHTS
-            # device = "cuda:0"
-            # model = model.to(device)
-            # image = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/INPAINTING/inpainting_examples/8399166846_f6fb4e4b8e_k.png"
-            # mask ="/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/INPAINTING/inpainting_examples/8399166846_f6fb4e4b8e_k_mask.png"
-            
-            # batch = make_batch(image, mask, device=device)
-            # sample_model_original(model, batch, device=device)
-            # exit()
 
+        
         # trainer and callbacks
         trainer_kwargs = dict()
 
@@ -610,7 +600,6 @@ if __name__ == "__main__":
                 "dirpath": ckptdir,
                 "filename": "{epoch:06}",
                 "mode": "min", # WE ARE MONITORING THE LOSS
-                #"filename": "{best:06}",
                 "verbose": True, # Mettere a false
                 "save_last": True,
             }

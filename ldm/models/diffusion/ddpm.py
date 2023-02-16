@@ -1275,22 +1275,22 @@ class LatentDiffusion(DDPM):
         if ddim:
             ddim_sampler = DDIMSampler(self)
             # with torch.no_grad():
-            #     with self.ema_scope():
-            if not custom:
-                shape = (self.channels, self.image_size, self.image_size)
-                samples, intermediates = ddim_sampler.sample(ddim_steps,batch_size,
+                # with self.ema_scope():
+            # if not custom:
+            shape = (self.channels, self.image_size, self.image_size)
+            samples, intermediates = ddim_sampler.sample(ddim_steps,batch_size,
                                                             shape,cond,verbose=False,**kwargs)
-            
-            else:
-                # TODO sample with custom function
-                image = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/INPAINTING/inpainting_examples/16693_12.png"
-                mask ="/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/INPAINTING/inpainting_examples/16693_12_mask.png"
-                device = next(self.parameters()).device
-                batch = make_batch(image, mask, device,resize_to = 512)
-                #### QUA FUNZIONA MANNAGGIA ALLA QUINDI LE RAPPRESENTAZIONI DATE OM èASTP AL PRECEDENTE DDIM SAMPLER SONO SBAGLIATE
-                #### LA DIFFERENZA STA NELLA CONCATENAZIONE UNICA DI UN INPUT, PRIMA C'ERA ANCHE LA CROSS-ATTENTION
-                samples, intermediates = sample_model_original(self, ddim_sampler = ddim_sampler, batch=batch, device=device, return_values=True)
-                #sample_model_original(self, batch=batch, steps=ddim_steps, device=device)
+                # torch.save(self.state_dict(), "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/test.pth")
+            # else:
+            #     # TODO sample with custom function
+            #     image = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/INPAINTING/inpainting_examples/16693_12.png"
+            #     mask ="/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/INPAINTING/inpainting_examples/16693_12_mask.png"
+            #     device = next(self.parameters()).device
+            #     batch = make_batch(image, mask, device,resize_to = 512)
+            #     #### QUA FUNZIONA MANNAGGIA ALLA QUINDI LE RAPPRESENTAZIONI DATE OM èASTP AL PRECEDENTE DDIM SAMPLER SONO SBAGLIATE
+            #     #### LA DIFFERENZA STA NELLA CONCATENAZIONE UNICA DI UN INPUT, PRIMA C'ERA ANCHE LA CROSS-ATTENTION
+            #     samples, intermediates = sample_model_original(self, ddim_sampler = ddim_sampler, batch=batch, device=device, return_values=True)
+            #     #sample_model_original(self, batch=batch, steps=ddim_steps, device=device)
         else:
             samples, intermediates = self.sample(cond=cond, batch_size=batch_size,
                                                  return_intermediates=True,**kwargs)
@@ -1590,34 +1590,33 @@ class LatentInpaintDiffusion(LatentDiffusion):
 
         if sample:
             # get denoise row
+            # SE LO METTI QUA VA VELOCE E INIZIA AD ALLENARSI DOPO VERSO LA 16 EPOCA
             with ema_scope("Sampling"):
+                # seed_everything(42, workers=True)
+
                 # samples, z_denoise_row = self.sample_log(cond={"c_concat": [c_cat], "c_crossattn": [c]},
                 samples, z_denoise_row = self.sample_log(cond=c_cat,
-                                                         batch_size=N, ddim=use_ddim,
-                                                         ddim_steps=ddim_steps, eta=ddim_eta)
+                                                            batch_size=N, ddim=use_ddim,
+                                                            ddim_steps=ddim_steps, eta=ddim_eta)
                 
-                # samples_custom, z_denoise_row_custom = self.sample_log(cond=c_cat,
-                #                                          batch_size=N, ddim=use_ddim,
-                #                                          ddim_steps=ddim_steps, eta=ddim_eta, custom=True)
-                
-                # CHECK SEED
-                # samples_custom2, z_denoise_row_custom2 = self.sample_log(cond=c_cat,
-                #                                          batch_size=N, ddim=use_ddim,
-                #                                          ddim_steps=ddim_steps, eta=ddim_eta, custom=True)
-                
-                # samples, z_denoise_row = self.sample(cond=c, batch_size=N, return_intermediates=True)
+                samples2, z_denoise_row2 = self.sample_log(cond=c_cat,
+                                                            batch_size=N, ddim=use_ddim,
+                                                            ddim_steps=ddim_steps, eta=ddim_eta)
+                                    
             x_samples = self.decode_first_stage(samples)
             # x_samples_custom = self.decode_first_stage(samples_custom)
-            # x_samples_custom2 = self.decode_first_stage(samples_custom2)
+            x_samples_custom2 = self.decode_first_stage(samples2)
 
             log["samples"] = x_samples
             # log["samples_custom"] = x_samples_custom
-            # log["samples_custom2"] = x_samples_custom2
+            log["samples2"] = x_samples_custom2
             
            
             if plot_denoise_rows:
                 denoise_grid = self._get_denoise_row_from_list(z_denoise_row)
                 log["denoise_row"] = denoise_grid
+                denoise_grid2 = self._get_denoise_row_from_list(z_denoise_row2)
+                log["denoise_row2"] = denoise_grid2
                 # denoise_grid_custom = self._get_denoise_row_from_list(z_denoise_row_custom)
                 # log["denoise_row_custom"] = denoise_grid_custom
                 # denoise_grid_custom2 = self._get_denoise_row_from_list(z_denoise_row_custom2)

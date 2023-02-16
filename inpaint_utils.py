@@ -36,46 +36,46 @@ def sample_model_original(model, ddim_sampler, batch, steps = 50, device = "cuda
     # print(sampler)
     # exit()
     with torch.no_grad():
-        with model.ema_scope():
-            c = model.cond_stage_model.encode(batch["masked_image"])
-            # print(batch["masked_image"].shape)
-            
-            # print("\nSHAPE OF MASKED", batch["masked_image"].shape)
-            # print("\nSHAPE OF MASK", batch["mask"].shape)
-            # exit()
-            
-            cc = torch.nn.functional.interpolate(batch["mask"],
-                                                    size=c.shape[-2:])
+        # with model.ema_scope():
+        c = model.cond_stage_model.encode(batch["masked_image"])
+        # print(batch["masked_image"].shape)
+        
+        # print("\nSHAPE OF MASKED", batch["masked_image"].shape)
+        # print("\nSHAPE OF MASK", batch["mask"].shape)
+        # exit()
+        
+        cc = torch.nn.functional.interpolate(batch["mask"],
+                                                size=c.shape[-2:])
 
-            c = torch.cat((c, cc), dim=1)
+        c = torch.cat((c, cc), dim=1)
 
-            # print("SHAPE FED TO INPUT", c.shape)
-            # shape = (c.shape[1]-2,)+c.shape[2:]
-            shape = (3,) + c.shape[2:]
+        # print("SHAPE FED TO INPUT", c.shape)
+        # shape = (c.shape[1]-2,)+c.shape[2:]
+        shape = (3,) + c.shape[2:]
 
-            # print("SHAPE FED TO INPUT", shape)
-            # print("\nSAMPLING\n")
-            
-            samples_ddim, intermediate = ddim_sampler.sample(S=steps,
-                                                conditioning=c,
-                                                batch_size=c.shape[0],
-                                                shape=shape,
-                                                verbose=False)
-            if return_values:
-                return samples_ddim, intermediate
-            else:
-                x_samples_ddim = model.decode_first_stage(samples_ddim)
+        # print("SHAPE FED TO INPUT", shape)
+        # print("\nSAMPLING\n")
+        
+        samples_ddim, intermediate = ddim_sampler.sample(S=steps,
+                                            conditioning=c,
+                                            batch_size=c.shape[0],
+                                            shape=shape,
+                                            verbose=False)
+        if return_values:
+            return samples_ddim, intermediate
+        else:
+            x_samples_ddim = model.decode_first_stage(samples_ddim)
 
-                image = torch.clamp((batch["image"]+1.0)/2.0,
-                                    min=0.0, max=1.0)
-                mask = torch.clamp((batch["mask"]+1.0)/2.0,
-                                    min=0.0, max=1.0)
-                predicted_image = torch.clamp((x_samples_ddim+1.0)/2.0,
-                                                min=0.0, max=1.0)
+            image = torch.clamp((batch["image"]+1.0)/2.0,
+                                min=0.0, max=1.0)
+            mask = torch.clamp((batch["mask"]+1.0)/2.0,
+                                min=0.0, max=1.0)
+            predicted_image = torch.clamp((x_samples_ddim+1.0)/2.0,
+                                            min=0.0, max=1.0)
 
-                inpainted = (1-mask)*image+mask*predicted_image
-                inpainted = inpainted.cpu().numpy().transpose(0,2,3,1)[0]*255
-                Image.fromarray(inpainted.astype(np.uint8)).save(out_path)
+            inpainted = (1-mask)*image+mask*predicted_image
+            inpainted = inpainted.cpu().numpy().transpose(0,2,3,1)[0]*255
+            Image.fromarray(inpainted.astype(np.uint8)).save(out_path)
 
 def seed_everything(seed: int):
     import random, os

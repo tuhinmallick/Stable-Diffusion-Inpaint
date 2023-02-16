@@ -1,0 +1,137 @@
+model:
+  # base_learning_rate: 1.0e-06
+  base_learning_rate: 7.5e-05
+
+  target: ldm.models.diffusion.ddpm.LatentInpaintDiffusion
+  params:
+    linear_start: 0.0015
+    linear_end: 0.0205
+    num_timesteps_cond: 1
+    log_every_t: 100
+    timesteps: 1000 # per overfittare tutti i livelli di rumore almeno 500 epoche
+    loss_type: l1
+    first_stage_key: image
+    cond_stage_key: masked_image # 4 channels
+    cond_stage_trainable: false 
+    # image_size: 64 # feature map size
+    # QUESTO DECIDE LA SIZE DEL RUMORE, QUA E' NECESSARIA METTERLA A 128 PERCHE' IN INFERENCE NORMALE NON VIENE UTILIZZATA MA DAL LOGGER SI
+    image_size: 128 # feature map size for 512 ---> l'hanno lasciata a 64 perchè loro hanno addestrato su 256? però in inference questo non viene minimamente usato, solo nei logger
+    channels: 3
+    concat_mode: true # there will be no context_dim specified in unet,
+    # check configs/stable-diffusion/v1-inference.yaml for cross-attention adn context dim
+    #monitor: val/loss
+    monitor: val/loss_simple_ema
+    # scale_factor: 0.18215
+    # ckpt_path: "models/ldm/inpainting_big/model_compvis.ckpt"
+    ckpt_path: "logs/2023-02-08_custom_place_training_different_samplerSAMESEED/checkpoints/epoch=000304.ckpt"    
+    # scheduler_config:
+    #   target: ldm.lr_scheduler.LambdaWarmUpCosineScheduler
+    #   params:
+    #     verbosity_interval: 0
+    #     # warm_up_steps: 1000
+    #     warm_up_steps: 2500
+    #     max_decay_steps: 50000
+    #     lr_start: 1.e-6
+    #     # lr_start: 0.001
+    #     lr_max: 1
+    #     lr_min: 0.0001
+    scheduler_config: # 10000 warmup steps
+      target: ldm.lr_scheduler.LambdaLinearScheduler
+      params:
+        warm_up_steps: [ 2500 ] # NOTE for resuming. use 10000 if starting from scratch
+        cycle_lengths: [ 10000000000000 ] # incredibly large number to prevent corner cases
+        f_start: [ 1.e-6 ]
+        f_max: [ 1. ]
+        f_min: [ 1. ]
+    unet_config:
+      target: ldm.modules.diffusionmodules.openaimodel.UNetModel
+      params:
+        image_size: 64 # unused
+        in_channels: 7 # image, masked image, mask
+        out_channels: 3 #FINAL IMAGE
+        model_channels: 256
+        attention_resolutions:
+        - 8
+        - 4
+        - 2
+        num_res_blocks: 2
+        channel_mult:
+        - 1
+        - 2
+        - 3
+        - 4
+        num_heads: 8
+        resblock_updown: true
+        use_checkpoint: True # gradient checkpointing
+        # legacy: False
+
+    first_stage_config:
+      target: ldm.models.autoencoder.VQModelInterface
+      params:
+        embed_dim: 3
+        n_embed: 8192
+        monitor: val/rec_loss
+        ddconfig:
+          attn_type: none # concat mode
+          double_z: false
+          z_channels: 3
+          resolution: 256
+          in_channels: 3
+          out_ch: 3
+          ch: 128
+          ch_mult:
+          - 1
+          - 2
+          - 4
+          num_res_blocks: 2
+          attn_resolutions: []
+          dropout: 0.0
+        lossconfig:
+          target: torch.nn.Identity # as in other configs, i think that there is some skip mechanism to use MSE
+    cond_stage_config: __is_first_stage__
+
+data:
+  target: main.DataModuleFromConfig
+  params:
+    batch_size: 1
+    num_workers: 5
+    wrap: false
+    train:
+      target: ldm.data.inpainting.InpaintingTrain
+      params:
+        csv_file: data/inpainting_dataset_surrogate/datasetplaces.csv
+        data_root: data/INPAINTING/inpainting_examples
+        size: 512
+    validation:
+      target: ldm.data.inpainting.InpaintingValidation
+      params:
+        csv_file: data/inpainting_dataset_surrogate/datasetplaces.csv
+        data_root: data/INPAINTING/inpainting_examples
+        size: 512
+
+lightning:
+  find_unused_parameters: False
+
+  callbacks:
+    image_logger:
+      target: main_inpainting.ImageLogger
+      params:
+        disabled: False
+        batch_frequency: 750
+        max_images: 4
+        increase_log_steps: True
+        log_first_step: True
+        log_images_kwargs:
+          use_ema_scope: False
+          plot_progressive_rows: True
+          plot_diffusion_rows: True
+          N: 4
+          unconditional_guidance_scale: 1.0
+          unconditional_guidance_label: [""]
+          ddim_steps: 50  # todo check these out for inpainting,
+          ddim_eta: 0.0   # todo check these out for inpainting,
+  # trainer:
+  #   benchmark: True
+  #   val_check_interval: 5000000  # really sorry
+  #   num_sanity_val_steps: 0
+  #   accumulate_grad_batches: 2

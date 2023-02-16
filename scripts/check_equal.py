@@ -8,8 +8,38 @@ def are_same_image(image1, image2):
 
 
 # Load the images
-img_1_path = "logs/2023-02-08_custom_place_training_different_sampler/images/train/samples_gs-000016_e-000016_b-000000.png"
-img_2_path =  "logs/2023-02-08_custom_place_training_different_sampler/images/train/samples_gs-000000_e-000000_b-000000.png"
+# img_1_path = "logs/2023-02-08_custom_place_training_different_sampler/images/train/samples_gs-000016_e-000016_b-000000.png"
+# img_2_path =  "logs/2023-02-08_custom_place_training_different_sampler/images/train/samples_gs-000000_e-000000_b-000000.png"
+
+# img_1_path = "logs/2023-02-08_custom_place_training_different_samplerSAMESEED/images/train/samples2_gs-000000_e-000000_b-000000.png"
+# # img_2_path = "logs/2023-02-08_custom_place_training_different_samplerSAMESEED/images/train/samples_gs-000000_e-000000_b-000000.png"
+# img_2_path = "logs/2023-02-08_custom_place_training_different_samplerSAMESEED/images/train/samples_gs-000002_e-000002_b-000000.png"
+
+
+# img_1_path = "logs/2023-02-08_custom_keyboard_training_different_samplerSAMESEED/images/train/samples2_gs-000000_e-000000_b-000000.png"
+# img_2_path = "logs/2023-02-08_custom_keyboard_training_different_samplerSAMESEED/images/train/samples2_gs-000008_e-000008_b-000000.png"
+
+
+# img_1_path = "logs/2023-02-08_custom_place_training_different_samplerSAMESEEDEMA/images/train/samples2_gs-000000_e-000000_b-000000.png"
+# img_2_path = "logs/2023-02-08_custom_place_training_different_samplerSAMESEEDEMA/images/train/samples2_gs-000002_e-000002_b-000000.png"
+
+
+img_1_path = "data/INPAINTING/output_images_debug/EMA2w_desktop4.png"
+img_2_path = "data/INPAINTING/output_images_debug/NOT_EMA2w_desktop4.png"
+
+
+
+# img_1_path = "logs/2023-02-08_custom_keyboard_training_different_samplerSAMESEED/images/train/samples2_gs-000000_e-000000_b-000000.png"
+# img_2_path = "logs/2023-02-08_custom_keyboard_training_different_samplerSAMESEED/images/train/samples2_gs-000008_e-000008_b-000000.png"
+
+
+
+# img_2_path = "logs/2023-02-08_custom_place_training_different_samplerSAMESEED/images/train/samples2_gs-000002_e-000002_b-000000.png"
+
+# img_1_path =  "data/INPAINTING/output_images_debug/new_16693_12.png"
+
+# img_2_path =  "data/INPAINTING/output_images_debug/2w_16693_12.png"
+
 
 image1 = Image.open(img_1_path)
 image2 = Image.open(img_2_path)

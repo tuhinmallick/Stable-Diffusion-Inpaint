@@ -1,0 +1,39 @@
+
+
+####### NO resume (già caricato)
+
+python3 main_inpainting.py --train --base configs/latent-diffusion/inpainting_runaway.yaml --gpus 0, --seed 42
+
+python3 main_inpainting.py --train --base configs/latent-diffusion/inpainting_runaway.yaml --gpus 0, --resume_from_checkpoint logs/2023-02-08NODECAY_inpainting_runaway/checkpoints/last.ckpt --seed 42
+
+
+############ PLACES ############
+
+python3 main_inpainting.py --train --name  custom_place_training_different_samplerSAMESEED --base  configs/latent-diffusion/inpainting_runaway_customPLACE.yaml  --gpus, 0   --seed  42 
+
+python3 main_inpainting.py --train --name  custom_place_training_different_samplerSAMESEEDNOTEMA --base  configs/latent-diffusion/inpainting_runaway_customPLACE.yaml  --gpus, 0   --seed  42 
+
+
+python3 main_inpainting.py --train --name  custom_place_training_different_samplerSAMESEEDEMA --base  configs/latent-diffusion/inpainting_runaway_customPLACEEMA.yaml  --gpus, 1   --seed  42 
+
+
+python3 main_inpainting.py --train --name  custom_place_training_different_samplerSAMESEEDNOTEMA2 --base  configs/latent-diffusion/inpainting_runaway_customPLACE.yaml  --gpus 0,   --seed  42 
+
+
+###################### QUESTO E' GIUSTO ########################################################################################
+
+python3 main_inpainting.py --train --name  custom_place_training_different_samplerSAMESEEDNOTEMA3 --base  configs/latent-diffusion/inpainting_runaway_customPLACE.yaml  --gpus 1,   --seed  42
+
+
+####################################################################################################################################
+
+############ PLACES RESUME ############
+
+python3 main_inpainting.py --train --name  custom_place_training_different_samplerSAMESEED --base  configs/latent-diffusion/inpainting_runaway_customPLACE.yaml  --gpus, 0   --resume_from_checkpoint logs/2023-02-08_custom_place_training_different_sampler/checkpoints/last.ckpt --seed 42
+
+
+############ KEYBOARD ############
+python3 main_inpainting.py --train --name  custom_keyboard_training_different_samplerSAMESEED --base  configs/latent-diffusion/inpainting_runaway_customKEYBOARD.yaml  --gpus, 0   --seed  42 
+
+
+python3 main_inpainting.py --train --name  custom_keyboard_training_different_samplerNOVELCONF --base  configs/latent-diffusion/inpainting_runaway_customKEYBOARD.yaml  --gpus, 1   --seed  42 

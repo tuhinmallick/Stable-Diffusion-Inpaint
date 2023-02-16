@@ -9,3 +9,6 @@ ldm/data/test_loader_inpaint/*
 model_*.txt
 .idea/*
 .vscode/*
+scripts/useful_commands.txt
+
+*.pth
