@@ -14,3 +14,6 @@ scripts/useful_commands.txt
 *.pth
 
 data/samples/output_inpainting_original_paper/*
+data/samples/custom_inpainting/output/*
+data/samples/readme_images/*.mp4
+data/samples/readme_images/*.webm
