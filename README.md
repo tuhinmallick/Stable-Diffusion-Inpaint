@@ -6,8 +6,7 @@ Thanks to a generous compute donation from [Stability AI](https://stability.ai/)
 The authors trained these model for a variety of tasks, including the Inpainting.
 In this project, I focused on providing a good codebase to easily fine-tune or training from scratch these architecture for the InPainting task.
 
-![Inpainting Samples](data/samples/readme_images/show_samples.jpg?raw=true)
-
+![Inpainting Samples](data/samples/readme_images/show_samples.jpg)
 
 
 
