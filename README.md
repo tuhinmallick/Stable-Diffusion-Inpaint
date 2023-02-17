@@ -1,10 +1,10 @@
-# Stable Diffusion for Inpainting
+# Stable Diffusion for Inpainting without prompt conditioning
 [Stable Diffusion](#stable-diffusion-v1) is a latent text-to-image diffusion
 model.
 Thanks to a generous compute donation from [Stability AI](https://stability.ai/) and support from [LAION](https://laion.ai/), the authors were able to train a Latent Diffusion Model on 512x512 images from a subset of the [LAION-5B](https://laion.ai/blog/laion-5b/) database. 
 
 The authors trained these model for a variety of tasks, including the Inpainting.
-In this project, I focused on providing a good codebase to easily fine-tune or training from scratch these architecture for the InPainting task.
+In this project, I focused on providing a good codebase to easily fine-tune or training from scratch the Inpainting architecture for a target dataset.
 
 ![Inpainting Samples](data/samples/readme_images/show_samples.jpg)
 
@@ -21,15 +21,12 @@ _[CVPR '22 Oral](https://openaccess.thecvf.com/content/CVPR2022/html/Rombach_Hig
 [GitHub](https://github.com/CompVis/latent-diffusion) | [arXiv](https://arxiv.org/abs/2112.10752) | [Project page](https://ommer-lab.com/research/latent-diffusion-models/)_
 
 
-
-
   
 ## Python environment
 
 ### Pip
 
 Python `3.6.8` environment built with pip for `CUDA Version: 10.1` compiled on a `Tesla V100` gpu.
-
 
 
 ```
@@ -53,11 +50,11 @@ pip install transformers==4.19.2 diffusers invisible-watermark
 pip install -e .
 ``` 
 
-## InPainting with Stable Diffusion
+## Inpainting with Stable Diffusion
 
-In this project, I focused on the InPainting task, providing a good codebase to easily fine-tune or training the model from scratch.
+In this project, I focused on the inpainting task, providing a good codebase to easily fine-tune or training the model from scratch.
 
-### Reference Sampling Script
+### **Reference Sampling Script**
 
 Here is provided a simple reference sampling script for inpainting.
 
@@ -99,9 +96,37 @@ Note: The inference config should not use EMA checkpoints (do not include `--ema
 
 In case the model was instead trained on a large and varied dataset such as ImageNet, you should use them to avoid influence too much the weights of the model with the last training epochs and so mantaining a regularity in the latent space and on the learned concepts.
 
-## Usage example with original weights
+#### **Usage example with original weights**
 
+The following command will take all the images in the ```indir``` folder that has a "_mask" pair and generate the inpainted counterparts saving them in ```outdir``` with the model defined in ```yaml_profile``` loading the weights from the ```ckpt``` path. 
+Each of the image filepaths will be prefixed with ```prefix```.
+The ```device``` used in such sample is the first indexed gpu.
+
+
+```
 python scripts/inpaint_runaway_correct.py --indir "data/samples/inpainting_original_paper/" --outdir "data/samples/output_inpainting_original_paper/" --ckpt "models/ldm/inpainting_big/model_compvis.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_inference.yaml" --device cuda:0 --prefix "sd_examples"
+```
+
+
+
+### **Reference Training Script**
+
+This training script was put to good use to overfit stable diffusion, over the reconstruction of a single image (to test its generalization capabilities). 
+
+In particular, the model aims at minimizing the perceptual loss to reconstruct a keyboard and a mouse in a classical office setting.
+
+In this configuration, the universal autoencoder was frozen and was used to conditioning the network denoising process with the concatenation method. So the only section trained was the backbone diffusion model (i.e., the U-NET). 
+
+
+```
+python3 main_inpainting.py --train --name  custom_keyboard_training_different_samplerSAMESEEDNOTEMA --base  configs/latent-diffusion/inpainting_runaway_customKEYBOARD.yaml  --gpus 1,   --seed  42
+```
+
+Follows an image of the obtained results (first row input, second row learned reconstruction over 256 epochs):
+
+![Diffusion Samples](data/samples/readme_images/training.jpg)
+
+
 
 ## TODO
 
