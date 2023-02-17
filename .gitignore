@@ -12,3 +12,5 @@ model_*.txt
 scripts/useful_commands.txt
 
 *.pth
+
+data/samples/output_inpainting_original_paper/*

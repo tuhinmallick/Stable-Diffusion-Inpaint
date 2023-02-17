@@ -9,9 +9,7 @@ sys.path.insert(
    1, "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint")
 from main import instantiate_from_config
 from ldm.models.diffusion.ddim import DDIMSampler
-from inpaint_utils import seed_everything, validate_state_dicts
-import json , cv2
-from torchvision.transforms import ToPILImage
+from inpaint_utils import seed_everything
 from inpaint_utils import make_batch
 from contextlib import suppress
 seed_everything(42)
@@ -62,7 +60,14 @@ if __name__ == "__main__":
         help="yaml file describing the model to initialize",
         required=True        
     )
-        
+      
+    parser.add_argument(
+        "--device",
+        type=str,
+        default="cpu",
+        help="specify the device for inference (cpu, cuda, cuda:x)",
+    )
+      
     parser.add_argument(
         "--steps",
         type=int,
@@ -80,8 +85,7 @@ if __name__ == "__main__":
 
     opt = parser.parse_args()
 
-    # masks = sorted(glob.glob(os.path.join(opt.indir, "*_mask.*")))
-    masks = sorted(glob.glob(os.path.join(opt.indir, "16693_12_mask.*")))
+    masks = sorted(glob.glob(os.path.join(opt.indir, "*_mask.*")))
 
     images = [x.replace("_mask.png", ".png") for x in masks]
     print(f"Found {len(masks)} inputs.")
@@ -89,36 +93,14 @@ if __name__ == "__main__":
     config = OmegaConf.load(opt.yaml_profile)
     model = instantiate_from_config(config.model)
 
-    # STANDARD
-
-    # weight_path_old = "models/ldm/inpainting_big/model_compvis.ckpt"
-    # weight_path_old = "logs/2023-02-08_custom_place_training_different_samplerSAMESEEDNOTEMA/checkpoints/epoch=000005.ckpt"
-    # pp_name = "OLD_NOTEMA_LOG"
-    # weight_path_old = "logs/2023-02-08_custom_place_training_different_samplerSAMESEEDNOTEMA3/checkpoints/last.ckpt"    
-
-    # loaded = torch.load(opt.ckpt) 
     model.load_state_dict(torch.load(opt.ckpt)["state_dict"],
                             strict=False)
-    # weight_path_old = "models/ldm/inpainting_big/last.ckpt"
-
-
-    # PTH
-    # weight_path_old = "test.pth"
-    # model.load_state_dict(torch.load(weight_path_old))
 
     print("Loading modeling from %s" % opt.ckpt)
-
-    # state_dict_to_load = torch.load(weight_path_old)["state_dict"]
-
-    # state_dict_to_load_old = torch.load(weight_path_old)["state_dict"]
     
     
-    # validate_state_dicts(state_dict_to_load_old,state_dict_to_load)
+    device = torch.device(opt.device) if torch.cuda.is_available() and opt.device is not "cpu" else torch.device("cpu")
     
-    # exit()
-    device_name ="cuda:1"
-    
-    device = torch.device(device_name) if torch.cuda.is_available() else torch.device("cpu")
     model = model.to(device)
 
     sampler = DDIMSampler(model)
@@ -127,37 +109,30 @@ if __name__ == "__main__":
     
     scope = model.ema_scope if opt.ema else suppress
     ema_prefix = "EMA" if opt.ema else "NOT_EMA"
+    
     with torch.no_grad():
         with scope("Sampling"):
             for image, mask in tqdm(zip(images, masks)):
-                outpath = os.path.join(opt.outdir, "%s_%s_%s" % (opt.prefix, ema_prefix , os.path.split(image)[1]))
+                outpath = os.path.join(opt.outdir, "%s_%s_%s.png" % (os.path.split(image)[1].split(".")[0], opt.prefix, ema_prefix , ))
 
                 batch = make_batch(image, mask, device=device, resize_to=512)
                 
-                # encode masked image and concat downsampled mask
                 c = model.cond_stage_model.encode(batch["masked_image"])
-                
-                # print(batch["mask"])
-                
+                                
                 cc = torch.nn.functional.interpolate(batch["mask"],
                                                         size=c.shape[-2:])
-                # print(cc)
+
                 c = torch.cat((c, cc), dim=1)
 
-                # print("SHAPE FED TO INPUT", c.shape)
-                # shape = (c.shape[1]-2,)+c.shape[2:]
+
                 shape = (3,) + c.shape[2:]
 
-                # print("SHAPE FED TO INPUT", shape)
-                # print("\nSAMPLING\n")
                 
                 samples_ddim, _ = sampler.sample(S=opt.steps,
                                                     conditioning=c,
                                                     batch_size=c.shape[0],
                                                     shape=shape,
                                                     verbose=False)
-                # print(samples_ddim.shape)
-                # exit()
 
                 x_samples_ddim = model.decode_first_stage(samples_ddim)
 
@@ -174,5 +149,4 @@ if __name__ == "__main__":
                 
                 predicted_image = predicted_image.cpu().numpy().transpose(0,2,3,1)[0]*255
                 print("Save in %s" % outpath)
-                # Image.fromarray(inpainted.astype(np.uint8)).save(outpath)
                 Image.fromarray(predicted_image.astype(np.uint8)).save(outpath)

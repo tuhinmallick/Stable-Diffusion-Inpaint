@@ -6,6 +6,11 @@ Thanks to a generous compute donation from [Stability AI](https://stability.ai/)
 The authors trained these model for a variety of tasks, including the Inpainting.
 In this project, I focused on providing a good codebase to easily fine-tune or training from scratch these architecture for the InPainting task.
 
+![Inpainting Samples](data/samples/readme_images/show_samples.jpg?raw=true)
+
+
+
+
 ## Original paper
 [**High-Resolution Image Synthesis with Latent Diffusion Models**](https://ommer-lab.com/research/latent-diffusion-models/)<br/>
 [Robin Rombach](https://github.com/rromb)\*,
@@ -24,13 +29,15 @@ _[CVPR '22 Oral](https://openaccess.thecvf.com/content/CVPR2022/html/Rombach_Hig
 
 ### Pip
 
-Pip environment built for `CUDA Version: 10.1` compiled on a `Tesla V100` gpu.
+Python `3.6.8` environment built with pip for `CUDA Version: 10.1` compiled on a `Tesla V100` gpu.
+
+
 
 ```
 pip install -r requirements.txt
 ```
 
-### Conda (provided by authors in the original repo)
+### Conda enviroment of the [original repo](https://github.com/CompVis/stable-diffusion#requirements)
 A suitable [conda](https://conda.io/) environment named `ldm` can be created
 and activated with:
 
@@ -93,7 +100,9 @@ Note: The inference config should not use EMA checkpoints (do not include `--ema
 
 In case the model was instead trained on a large and varied dataset such as ImageNet, you should use them to avoid influence too much the weights of the model with the last training epochs and so mantaining a regularity in the latent space and on the learned concepts.
 
+## Usage example with original weights
 
+python scripts/inpaint_runaway_correct.py --indir "data/samples/inpainting_original_paper/" --outdir "data/samples/output_inpainting_original_paper/" --ckpt "models/ldm/inpainting_big/model_compvis.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_inference.yaml" --device cuda:0 --prefix "sd_examples"
 
 ## TODO
 
@@ -106,7 +115,30 @@ In case the model was instead trained on a large and varied dataset such as Imag
 
 - This training pipeline is hugely based on [CompVis's](https://github.com/CompVis/stable-diffusion) and [Runaway's](https://github.com/runwayml/stable-diffusion) codebases.
 
+- The modified yaml configuration files were inspired by [Pesser's implementation](https://github.com/pesser/stable-diffusion).
+
 Thanks for open-sourcing!
+
+
+## Known installation problems
+
+### Taming transformers module
+
+```
+from taming.modules.vqvae.quantize import VectorQuantizer2 as VectorQuantizer
+Import error taming
+``` 
+
+to fix just force install to ```pip install taming-transformers```
+
+### VectorQuantizer2 module
+
+```
+ImportError: cannot import name 'VectorQuantizer2'
+``` 
+
+replace ```quantize.py``` in ```taming/modules/vqvae/quantize.py``` with [this version](https://github.com/CompVis/taming-transformers/blob/master/taming/modules/vqvae/quantize.py).
+
 
 ## BibTeX
 
