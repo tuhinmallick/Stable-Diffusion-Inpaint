@@ -23,19 +23,46 @@ seed_everything(42)
 
 if __name__ == "__main__":
     
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Stable Diffusion Inpainting")
+    
     parser.add_argument(
         "--indir",
         type=str,
         nargs="?",
         help="dir containing image-mask pairs (`example.png` and `example_mask.png`)",
+        required=True
     )
+    
     parser.add_argument(
         "--outdir",
         type=str,
         nargs="?",
         help="dir to write results to",
+        required=True
     )
+    
+    parser.add_argument(
+        "--prefix",
+        type=str,
+        default="",
+        help="path of weights to load",
+        required=True        
+    )
+    
+    parser.add_argument(
+        "--ckpt",
+        type=str,
+        help="path of weights to load",
+        required=True        
+    )
+    
+    parser.add_argument(
+        "--yaml_profile",
+        type=str,
+        help="yaml file describing the model to initialize",
+        required=True        
+    )
+        
     parser.add_argument(
         "--steps",
         type=int,
@@ -48,6 +75,8 @@ if __name__ == "__main__":
         action='store_true',
         help="use ema weights",
     )
+    
+
 
     opt = parser.parse_args()
 
@@ -57,7 +86,7 @@ if __name__ == "__main__":
     images = [x.replace("_mask.png", ".png") for x in masks]
     print(f"Found {len(masks)} inputs.")
 
-    config = OmegaConf.load("configs/latent-diffusion/inpainting_runaway.yaml")
+    config = OmegaConf.load(opt.yaml_profile)
     model = instantiate_from_config(config.model)
 
     # STANDARD
@@ -65,12 +94,10 @@ if __name__ == "__main__":
     # weight_path_old = "models/ldm/inpainting_big/model_compvis.ckpt"
     # weight_path_old = "logs/2023-02-08_custom_place_training_different_samplerSAMESEEDNOTEMA/checkpoints/epoch=000005.ckpt"
     # pp_name = "OLD_NOTEMA_LOG"
-    weight_path_old = "logs/2023-02-08_custom_place_training_different_samplerSAMESEEDNOTEMA3/checkpoints/last.ckpt"
-    pp_name = "NEW_LOG"
-    
+    # weight_path_old = "logs/2023-02-08_custom_place_training_different_samplerSAMESEEDNOTEMA3/checkpoints/last.ckpt"    
 
-    loaded = torch.load(weight_path_old) 
-    model.load_state_dict(torch.load(weight_path_old)["state_dict"],
+    # loaded = torch.load(opt.ckpt) 
+    model.load_state_dict(torch.load(opt.ckpt)["state_dict"],
                             strict=False)
     # weight_path_old = "models/ldm/inpainting_big/last.ckpt"
 
@@ -79,7 +106,7 @@ if __name__ == "__main__":
     # weight_path_old = "test.pth"
     # model.load_state_dict(torch.load(weight_path_old))
 
-    print("Loading modeling from %s" % weight_path_old)
+    print("Loading modeling from %s" % opt.ckpt)
 
     # state_dict_to_load = torch.load(weight_path_old)["state_dict"]
 
@@ -99,12 +126,11 @@ if __name__ == "__main__":
     os.makedirs(opt.outdir, exist_ok=True)
     
     scope = model.ema_scope if opt.ema else suppress
-    prefix = "EMA" if opt.ema else "NOT_EMA"
+    ema_prefix = "EMA" if opt.ema else "NOT_EMA"
     with torch.no_grad():
         with scope("Sampling"):
             for image, mask in tqdm(zip(images, masks)):
-                outpath = os.path.join(opt.outdir, pp_name + prefix + os.path.split(image)[1])
-                outpath2 = os.path.join(opt.outdir, pp_name + prefix + "2w_" + os.path.split(image)[1])
+                outpath = os.path.join(opt.outdir, "%s_%s_%s" % (opt.prefix, ema_prefix , os.path.split(image)[1]))
 
                 batch = make_batch(image, mask, device=device, resize_to=512)
                 
@@ -149,4 +175,4 @@ if __name__ == "__main__":
                 predicted_image = predicted_image.cpu().numpy().transpose(0,2,3,1)[0]*255
                 print("Save in %s" % outpath)
                 # Image.fromarray(inpainted.astype(np.uint8)).save(outpath)
-                Image.fromarray(predicted_image.astype(np.uint8)).save(outpath2)
+                Image.fromarray(predicted_image.astype(np.uint8)).save(outpath)

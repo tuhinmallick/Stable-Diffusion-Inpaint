@@ -87,7 +87,7 @@ model:
           attn_resolutions: []
           dropout: 0.0
         lossconfig:
-          target: torch.nn.Identity # as in other configs, i think that there is some skip mechanism to use MSE
+          target: torch.nn.Identity # NO TRAIN FOR AUTOENCODER
     cond_stage_config: __is_first_stage__
 
 data:
