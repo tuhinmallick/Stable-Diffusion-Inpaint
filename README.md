@@ -1,4 +1,10 @@
 # Stable Diffusion for Inpainting without prompt conditioning
+
+<p align="right">
+<a href="https://pytorch.org/"><img src="https://img.shields.io/badge/PyTorch-%23EE4C2C.svg?style=for-the-badge&logo=PyTorch&logoColor=white" alt="pytorch"></a>
+<a href="https://github.com/lorenzo-stacchio/stable-diffusion_custom_inpaint"><img src="https://visitor-badge.glitch.me/badge?page_id=lorenzo-stacchio.stable-diffusion_custom_inpaint" alt="visitors"></a>
+</p>
+
 [Stable Diffusion](#stable-diffusion-v1) is a latent text-to-image diffusion
 model.
 Thanks to a generous compute donation from [Stability AI](https://stability.ai/) and support from [LAION](https://laion.ai/), the authors were able to train a Latent Diffusion Model on 512x512 images from a subset of the [LAION-5B](https://laion.ai/blog/laion-5b/) database. 
@@ -66,7 +72,7 @@ To have meaningful results, you should download inpainting weights provided by t
 wget -O models/ldm/inpainting_big/model.ckpt https://ommer-lab.com/files/latent-diffusion/inpainting_big.zip
 ```
 
-N.B. even if the file was saved as a zip, it corresponds to [ a checkpoint file saved with pytorch-lightning](https://github.com/CompVis/stable-diffusion/issues/17#issuecomment-1232756078).
+N.B. even if the file was provided as a zip file, it corresponds to [a checkpoint file saved with pytorch-lightning](https://github.com/CompVis/stable-diffusion/issues/17#issuecomment-1232756078).
 
 
 Follows the script usage:
@@ -117,12 +123,22 @@ In particular, the model aims at minimizing the perceptual loss to reconstruct a
 
 In this configuration, the universal autoencoder was frozen and was used to conditioning the network denoising process with the concatenation method. So the only section trained was the backbone diffusion model (i.e., the U-NET). 
 
+#### **Create a custom dataset**
 
+The definition of the DataLoader used to train the inpainting model is defined in ```ldm/data/inpainting.py``` and was derived by the author's [inference script](https://github.com/CompVis/stable-diffusion/blob/main/scripts/inpaint.py) and several other resources like [this](https://github.com/huggingface/diffusers/tree/main/examples/research_projects/dreambooth_inpaint).
+
+Both the training and validation dataloader, expect a csv file with three columns:  `image_path`,`mask_path`,`partition`.
+
+After that, you can create a custom configuration `*.yaml` file, and specify the paths under the data key (check the [default configuration](configs/latent-diffusion/inpainting_runaway_customTEMPLATE.yaml)). 
+
+#### **Example of training in a small custom dataset**
 ```
-python3 main_inpainting.py --train --name  custom_keyboard_training_different_samplerSAMESEEDNOTEMA --base  configs/latent-diffusion/inpainting_runaway_customKEYBOARD.yaml  --gpus 1,   --seed  42
+python3 main_inpainting.py --train --name  custom_training --base  configs/latent-diffusion/inpainting_runaway_customTEMPLATE.yaml  --gpus 1,   --seed  42
 ```
 
-Follows an image of the obtained results (first row input, second row learned reconstruction over 256 epochs):
+#### **Custom training results**
+
+Creating a dataset with just three images of office desks with masked keyboard and mouse, I obtained the following results from fine-tuning the entire network (first row input, second row learned reconstruction over 256 epochs):
 
 ![Diffusion Samples](data/samples/readme_images/training.jpg)
 
@@ -132,7 +148,7 @@ Follows an image of the obtained results (first row input, second row learned re
 
 - [ ] Describe better reference script
 - [ ] Fine-tuning script
-- [ ] General dataloader
+- [x] General dataloader
 
 
 ## Acknowledgements 
