@@ -12,7 +12,7 @@ from PIL import Image
 import traceback
 from pytorch_lightning import seed_everything
 from pytorch_lightning.trainer import Trainer
-from pytorch_lightning.callbacks import ModelCheckpoint, Callback, LearningRateMonitor
+from pytorch_lightning.callbacks import ModelCheckpoint, Callback, LearningRateMonitor, BaseFinetuning
 from pytorch_lightning.utilities.distributed import rank_zero_only
 from pytorch_lightning.utilities import rank_zero_info
 
@@ -428,51 +428,27 @@ class CUDACallback(Callback):
         except AttributeError:
             pass
 
+class FeatureExtractorFreezeUnfreeze(BaseFinetuning):
+    def __init__(self, unfreeze_at_epoch=10):
+        super().__init__()
+        self._unfreeze_at_epoch = unfreeze_at_epoch
+
+    def freeze_before_training(self, pl_module):
+        # If you want to freeze any module use
+        # self.freeze(pl_module....) ## convolution block
+        pass
+
+    def finetune_function(self, pl_module, current_epoch, optimizer, optimizer_idx):
+        # When `current_epoch` do something, example unfreezing weights.
+        # self.unfreeze_and_add_param_group(
+        #         modules=pl_module....,
+        #         optimizer=optimizer,
+        #         train_bn=True,
+        #     )
+        pass
 
 if __name__ == "__main__":
 
-    # model:
-    #   base_learning_rate: float
-    #   target: path to lightning module
-    #   params:
-    #       key: value
-    # data:
-    #   target: main.DataModuleFromConfig
-    #   params:
-    #      batch_size: int
-    #      wrap: bool
-    #      train:
-    #          target: path to train dataset
-    #          params:
-    #              key: value
-    #      validation:
-    #          target: path to validation dataset
-    #          params:
-    #              key: value
-    #      test:
-    #          target: path to test dataset
-    #          params:
-    #              key: value
-    # lightning: (optional, has sane defaults and can be specified on cmdline)
-    #   trainer:
-    #       additional arguments to trainer
-    #   logger:
-    #       logger to instantiate
-    #   modelcheckpoint:
-    #       modelcheckpoint to instantiate
-    #   callbacks:
-    #       callback1:
-    #           target: importpath
-    #           params:
-    #               key: value
-
-    # now = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
-    # now ="2023-02-07T13-57-20" # FIXED TO AVOID WASTING SPACE
-    
-    # now ="2023-02-08T13-57-20" # FIXED TO AVOID WASTING SPACE
-    # now ="2023-02-08NODECAY" # FIXED TO AVOID WASTING SPACE
-
-    # now ="2023-02-08NOWEIGHTCAY" # FIXED TO AVOID WASTING SPACE
     now ="2023-02-08" # FIXED TO AVOID WASTING SPACE
 
     # add cwd for convenience and to make classes in this file available when
@@ -607,7 +583,7 @@ if __name__ == "__main__":
         if hasattr(model, "monitor"):
             print(f"Monitoring {model.monitor} as checkpoint metric.")
             default_modelckpt_cfg["params"]["monitor"] = model.monitor
-            default_modelckpt_cfg["params"]["save_top_k"] = 2
+            default_modelckpt_cfg["params"]["save_top_k"] = 1
 
         if "modelcheckpoint" in lightning_config:
             modelckpt_cfg = lightning_config.modelcheckpoint
@@ -621,6 +597,9 @@ if __name__ == "__main__":
 
         # add callback which sets up log directory
         default_callbacks_cfg = {
+            # "fine_tune":{
+            #     "target": "main_inpainting.FeatureExtractorFreezeUnfreeze",
+            # },
             "setup_callback": {
                 "target": "main_inpainting.SetupCallback",
                 "params": {

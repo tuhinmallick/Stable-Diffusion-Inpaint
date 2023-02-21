@@ -32,8 +32,7 @@ _[CVPR '22 Oral](https://openaccess.thecvf.com/content/CVPR2022/html/Rombach_Hig
 
 ### Pip
 
-Python `3.6.8` environment built with pip for `CUDA Version: 10.1` compiled on a `Tesla V100` gpu.
-
+Python `3.6.8` environment built with pip for `CUDA 10.1` and tested on a `Tesla V100` gpu (Centos 7 OS).
 
 ```
 pip install -r requirements.txt
@@ -143,22 +142,41 @@ Creating a dataset with just three images of office desks with masked keyboard a
 ![Diffusion Samples](data/samples/readme_images/training.jpg)
 
 
+## Partial training for the U-NET backbone
+
+In any case of partial U-NET finetuning, you must remove the gradient checkpointing carried out in the Attention and Residual blocks (higher memory consumption). To do that, just add the `use_checkpoint: False` under the `unet_config` field in your configuration `.yaml` file.
+
+### Training only shallow layers
+From [this paper](https://arxiv.org/abs/2002.08438), it seems that fine-tuning only the shallow layers of the U-NET (i.e. encoder) instead of fine-tuning the entire network can produce better results. In this case, we are training a latent-diffusion model, but i thought this worthed a shot!
+
+In order to partially fine-tune the U-NET, add  `freeze_deep_layers: True` under the `unet_config` field in your configuration `.yaml` file. This would remove from the grads calculation the `output_blocks` of the U-NET. 
+
+### Training only attention blocks (TODO)
+[This paper](https://openreview.net/pdf?id=0J6afk9DqrR), it seems that fine-tuning only the attention blocks while freezing residual blocks provides higher performance for classical diffusion models.
+As an additional advantage, attention block tuning is more memory-efficient since it only takes 10.3% of the total parameters.
+Again, stable diffusion is a latent diffusion model, but i thought that this results could be transferred also in the latent diffusion space!
+
+### Training custom layers only (TODO)
+
+You could also customize the layers you want to freeze. In this case, remove the added `freeze_deep_layers: True` and instead add the `finetune_training_keys: [diffusion_model.input_blocks.0.0]` (in this case, i am just training the input block).
+
+
 
 ## TODO
 
-- [ ] Describe better reference script
+- [ ] Describe and produce high-quality reference scripts
 - [ ] Fine-tuning script
 - [x] General dataloader
+ -[ ] Integrate [ControlNet mechanism](https://github.com/lllyasviel/ControlNet#guess-anchor)
 
 
 ## Acknowledgements 
 
-- This training pipeline is hugely based on [CompVis's](https://github.com/CompVis/stable-diffusion) and [Runaway's](https://github.com/runwayml/stable-diffusion) codebases.
+- The training pipeline is hugely based on [CompVis's](https://github.com/CompVis/stable-diffusion) and [Runaway's](https://github.com/runwayml/stable-diffusion) codebases.
 
 - The modified yaml configuration files were inspired by [Pesser's implementation](https://github.com/pesser/stable-diffusion).
 
 Thanks for open-sourcing!
-
 
 ## Known installation problems
 

@@ -1,6 +1,5 @@
 model:
-  # base_learning_rate: 1.0e-06
-  base_learning_rate: 7.5e-05
+  base_learning_rate: 1.0e-06
 
   target: ldm.models.diffusion.ddpm.LatentInpaintDiffusion
   params:
@@ -14,7 +13,7 @@ model:
     cond_stage_key: masked_image # 4 channels
     cond_stage_trainable: false 
     # do not use ema
-    use_ema: false
+    use_ema: True
     
     # image_size: 64 # feature map size
     # QUESTO DECIDE LA SIZE DEL RUMORE, QUA E' NECESSARIA METTERLA A 128 PERCHE' IN INFERENCE NORMALE NON VIENE UTILIZZATA MA DAL LOGGER SI
@@ -25,17 +24,13 @@ model:
     #monitor: val/loss
     monitor: val/loss_simple_ema
     # scale_factor: 0.18215
-    ckpt_path: "models/ldm/inpainting_big/model_compvis.ckpt"
+    # ckpt_path: "models/ldm/inpainting_big/model_compvis.ckpt"
     finetune_keys_to_retain: null
-    finetune_training_keys: [model.diffusion_model.input_blocks.0.0.weight,
-                              model_ema.diffusion_modelinput_blocks00weight
-                              ]
 
     scheduler_config: # 10000 warmup steps
       target: ldm.lr_scheduler.LambdaLinearScheduler
       params:
-        warm_up_steps: [ 2500 ] # NOTE for resuming. use 10000 if starting from scratch
-        # warm_up_steps: [ 2 ] # NOTE for resuming. use 10000 if starting from scratch
+        warm_up_steps: [ 10000 ] # i am not fine-tuning anything
         cycle_lengths: [ 10000000000000 ] # incredibly large number to prevent corner cases
         f_start: [ 1.e-6 ]
         f_max: [ 1. ]
@@ -65,6 +60,7 @@ model:
     first_stage_config:
       target: ldm.models.autoencoder.VQModelInterface
       params:
+        ckpt_path: models/first_stage_models/vq-f4-noattn/model.ckpt
         embed_dim: 3
         n_embed: 8192
         monitor: val/rec_loss
@@ -90,26 +86,25 @@ model:
 data:
   target: main.DataModuleFromConfig
   params:
-    batch_size: 2
+    batch_size: 1
     num_workers: 5
     wrap: false
     train:
       target: ldm.data.inpainting.InpaintingTrain
       params:
-        csv_file: data/inpainting_dataset_surrogate/datasetthree_keyboard.csv
+        csv_file: data/inpainting_dataset_surrogate/dataset.csv
         data_root: data/INPAINTING/custom_inpainting
         size: 512
     validation:
       target: ldm.data.inpainting.InpaintingValidation
       params:
-        csv_file: data/inpainting_dataset_surrogate/datasetthree_keyboard.csv
+        csv_file: data/inpainting_dataset_surrogate/dataset.csv
         data_root: data/INPAINTING/custom_inpainting
         size: 512
 
 
 lightning:
   find_unused_parameters: True
-
   callbacks:
     image_logger:
       target: main_inpainting.ImageLogger

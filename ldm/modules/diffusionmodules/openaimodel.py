@@ -312,7 +312,8 @@ class AttentionBlock(nn.Module):
         self.proj_out = zero_module(conv_nd(1, channels, channels, 1))
 
     def forward(self, x):
-        return checkpoint(self._forward, (x,), self.parameters(), True)   # TODO: check checkpoint usage, is True # TODO: fix the .half call!!!
+        return checkpoint(self._forward, (x,), self.parameters(), self.use_checkpoint)
+        # return checkpoint(self._forward, (x,), self.parameters(), True)   # TODO: check checkpoint usage, is True # TODO: fix the .half call!!!
         #return pt_checkpoint(self._forward, x)  # pytorch
 
     def _forward(self, x):
@@ -459,6 +460,7 @@ class UNetModel(nn.Module):
         num_head_channels=-1,
         num_heads_upsample=-1,
         use_scale_shift_norm=False,
+        freeze_deep_layers = False,
         resblock_updown=False,
         use_new_attention_order=False,
         use_spatial_transformer=False,    # custom transformer support
@@ -691,6 +693,12 @@ class UNetModel(nn.Module):
             #nn.LogSoftmax(dim=1)  # change to cross_entropy and produce non-normalized logits
         )
 
+        if freeze_deep_layers: self.freeze_deep_layers()
+
+    def freeze_deep_layers(self):
+        for param in self.output_blocks.parameters():
+            param.requires_grad = False        
+                    
     def convert_to_fp16(self):
         """
         Convert the torso of the model to float16.
@@ -728,11 +736,7 @@ class UNetModel(nn.Module):
             emb = emb + self.label_emb(y)
 
         #print("conditioning plugged in via crossattn -->", context)
-        
-        # print("\nUNET input emb \n", x.shape)
-        # print("\nUNET time emb \n", emb.shape)
-        # print("\nUNET Context\n", context)
-        #exit()
+
         h = x.type(self.dtype)
         for module in self.input_blocks:
             h = module(h, emb, context)

@@ -24,8 +24,8 @@ def are_same_image(image1, image2):
 # img_2_path = "logs/2023-02-08_custom_place_training_different_samplerSAMESEEDEMA/images/train/samples2_gs-000002_e-000002_b-000000.png"
 
 
-img_1_path = "data/INPAINTING/output_images_debug/EMA2w_desktop4.png"
-img_2_path = "data/INPAINTING/output_images_debug/NOT_EMA2w_desktop4.png"
+img_1_path = "logs/2023-02-08_custom_keyboard_training_FULL_FT_scratch/images/train/samples2_gs-000000_e-000000_b-000000.png"
+img_2_path = "logs/2023-02-08_custom_keyboard_training_FULL_FT_scratch/images/train/samples2_gs-000002_e-000002_b-000000.png"
 
 
 

@@ -80,7 +80,6 @@ class DDPM(pl.LightningModule):
         
         ################################## TODO: automatic optimization by me 
         self.automatic_optimization = False
-        
         ##################################
         assert parameterization in ["eps", "x0"], 'currently only supporting "eps" and "x0"'
         self.parameterization = parameterization
@@ -354,15 +353,10 @@ class DDPM(pl.LightningModule):
 
         opt = self.optimizers()
         opt.zero_grad()
-        
+      
         self.manual_backward(loss)
-        # a = opt.param_groups[0]['params'][0].grad
 
         opt.step()
-        # # accumulate gradients of N batches
-        # if (batch_idx + 1) % N == 0:
-        #     opt.step()
-        #     opt.zero_grad()
         
         self.log_dict(loss_dict, prog_bar=True,
                       logger=True, on_step=True, on_epoch=True)
@@ -370,11 +364,6 @@ class DDPM(pl.LightningModule):
         self.log("global_step", self.global_step,
                  prog_bar=True, logger=True, on_step=True, on_epoch=False)
         # print("-------GRADIENT RECAP-------")
-        # for n,p in self.named_parameters():
-        #     if p.requires_grad:
-        #         print(n)
-        #         print(p.grad)
-        #         break
                 
         if self.use_scheduler:
             lr = self.optimizers().param_groups[0]['lr']
@@ -901,8 +890,6 @@ class LatentDiffusion(DDPM):
 
     def forward(self, x, c, *args, **kwargs):
         t = torch.randint(0, self.num_timesteps, (x.shape[0],), device=self.device).long()
-        # print("LATENT MODEL INPUT", x.shape, c.shape, t.shape)
-        # exit()
         if self.model.conditioning_key is not None:
             assert c is not None
             if self.cond_stage_trainable:
@@ -1487,12 +1474,17 @@ class LatentInpaintDiffusion(LatentDiffusion):
     To disable finetuning mode, set finetune_keys to None
      """
     def __init__(self,
-                 finetune_keys=("model.diffusion_model.input_blocks.0.0.weight",
+                # DEFAULT FINETUNE KEYS --> use to add novel channels to the concatenation
+                 finetune_training_keys=("model.diffusion_model.input_blocks.0.0.weight",
+                                "model_ema.diffusion_modelinput_blocks00weight"
+                                ),
+                 finetune_keys_to_retain=("model.diffusion_model.input_blocks.0.0.weight",
                                 "model_ema.diffusion_modelinput_blocks00weight"
                                 ),
                  concat_keys=("masked_image","mask"), # AS IN INFERENCE
                  masked_image_key="masked_image",
-                 keep_finetune_dims=4,  # if model was trained without concat mode before and we would like to keep these channels
+                #  keep_finetune_dims=4,  # if model was trained without concat mode before and we would like to keep these channels
+                 keep_finetune_dims=7,  # if model was trained with concat mode before and we would like to keep these channels and add more channels to condition
                  c_concat_log_start=0, # to log reconstruction of c_concat codes, first three channels in our case
                  c_concat_log_end=3,
                  *args, **kwargs
@@ -1502,15 +1494,85 @@ class LatentInpaintDiffusion(LatentDiffusion):
         super().__init__(*args, **kwargs)
         self.masked_image_key = masked_image_key
         assert self.masked_image_key in concat_keys
-        self.finetune_keys = finetune_keys
+        self.finetune_training_keys = finetune_training_keys
+        self.finetune_keys_to_retain = finetune_keys_to_retain
         self.concat_keys = concat_keys
         self.keep_dims = keep_finetune_dims
         self.c_concat_log_start = c_concat_log_start
         self.c_concat_log_end = c_concat_log_end
-        # if exists(self.finetune_keys): assert exists(ckpt_path), 'can only finetune from a given checkpoint'
-        if exists(ckpt_path):
-            self.init_from_ckpt(ckpt_path, ignore_keys)
+        if exists(self.finetune_keys_to_retain): assert exists(ckpt_path), 'can only finetune from a given checkpoint'
+        if exists(ckpt_path): self.init_from_ckpt(ckpt_path, ignore_keys)
         
+    def init_from_ckpt(self, path, ignore_keys=list(), only_model=False):
+        sd = torch.load(path, map_location="cpu")
+        if "state_dict" in list(sd.keys()):
+            sd = sd["state_dict"]
+        keys = list(sd.keys())
+        for k in keys:
+            for ik in ignore_keys:
+                if k.startswith(ik):
+                    print("Deleting key {} from state_dict.".format(k))
+                    del sd[k]
+
+            # make it explicit, finetune by including extra input channels
+            # HERE THE FINETUNED IS INTENDED TO BE IN THE CASE YOU WANT TO ADD MORE THAN
+            # CLASSICAL CONDITIONING IN THE INPUT CHANNELS AND YOU WANT TO RETAIN THE KNOWLEDGE FROM BEFORE
+            if exists(self.finetune_keys_to_retain) and k in self.finetune_keys_to_retain:
+                new_entry = None
+                for name, param in self.named_parameters():
+                    if name in self.finetune_keys_to_retain:
+                        print(f"modifying key '{name}' and keeping its original {self.keep_dims} (channels) dimensions only")
+                        new_entry = torch.zeros_like(param)  # zero init
+                assert exists(new_entry), 'did not find matching parameter to modify'
+                new_entry[:, :self.keep_dims, ...] = sd[k]
+                sd[k] = new_entry
+                
+        missing, unexpected = self.load_state_dict(sd, strict=False) if not only_model else self.model.load_state_dict(sd, strict=False)
+        print(f"Restored from {path} with {len(missing)} missing and {len(unexpected)} unexpected keys")
+        if len(missing) > 0:
+            print(f"Missing Keys: {missing}")
+        if len(unexpected) > 0:
+            print(f"Unexpected Keys: {unexpected}")
+    
+    def configure_optimizers(self):
+        lr = self.learning_rate
+        params = list(self.model.parameters())
+        
+        # if self.finetune_training_keys and len(self.finetune_training_keys)>0:
+        #     params = []
+        #     # requires grad to False except for key
+        #     for n,p in self.model.named_parameters():
+        #         if any([x in n for x in self.finetune_training_keys]):
+        #         # if n in self.finetune_training_keys:
+        #             p.requires_grad = True
+        #             params.append(p)
+        #         else:
+        #             p.requires_grad = True
+
+        if self.cond_stage_trainable:
+            print(f"{self.__class__.__name__}: Also optimizing conditioner params!")
+            params = params + list(self.cond_stage_model.parameters())
+        if self.learn_logvar:
+            print('Diffusion model optimizing logvar')
+            params.append(self.logvar)
+        
+        # Optimization made by me
+        opt = torch.optim.AdamW(filter(lambda p: p.requires_grad, params), lr=lr)
+
+        if self.use_scheduler:
+            assert 'target' in self.scheduler_config
+            scheduler = instantiate_from_config(self.scheduler_config)
+
+            print("Setting up LambdaLR scheduler...")
+            scheduler = [
+                {
+                    'scheduler': LambdaLR(opt, lr_lambda=scheduler.schedule),
+                    'interval': 'step',
+                    'frequency': 1
+                }]
+            return [opt], scheduler
+        return opt
+                       
     @torch.no_grad()
     def get_input(self, batch, k, cond_key=None, bs=None, return_first_stage_outputs=False):
         # note: restricted to non-trainable encoders currently
@@ -1547,10 +1609,8 @@ class LatentInpaintDiffusion(LatentDiffusion):
         return z, all_conds
 
     @torch.no_grad()
-    def log_images(self, batch, N=8, n_row=4, sample=True, ddim_steps=50, ddim_eta=0, return_keys=None,
-                   quantize_denoised=True, inpaint=True, plot_denoise_rows=False, plot_progressive_rows=True,
-                   plot_diffusion_rows=True, unconditional_guidance_scale=1., unconditional_guidance_label=None,
-                   use_ema_scope=True,
+    def log_images(self, batch, N=8, n_row=4, sample=True, ddim_steps=50, ddim_eta=0,
+                  plot_denoise_rows=False, plot_diffusion_rows=True, use_ema_scope=True,
                    **kwargs):
         # ema_scope = self.ema_scope if use_ema_scope else nullcontext
         ema_scope =  self.ema_scope if use_ema_scope else contextlib.suppress

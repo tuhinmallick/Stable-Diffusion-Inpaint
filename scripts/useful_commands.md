@@ -12,6 +12,8 @@ python scripts/inpaint_runaway_correct.py --indir "data/INPAINTING/inpainting_ex
 
 python scripts/inpaint_runaway_correct.py --indir "data/samples/custom_inpainting/mouse_keyboard/" --outdir "data/samples/custom_inpainting/output/" --ckpt "logs/2023-02-08_custom_keyboard_training_different_samplerSAMESEEDNOTEMA/checkpoints/epoch=000269.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_inference.yaml" --device cuda:0 --prefix "trained_key"
 
+python scripts/inpaint_runaway_correct.py --indir "data/samples/custom_inpainting/mouse_keyboard/" --outdir "data/samples/custom_inpainting/output/" --ckpt "logs/2023-02-08_custom_keyboard_training_FULL_SAMESEEDNOTEMA/checkpoints/last.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_inference.yaml" --device cuda:0 --prefix "trained_key_FULL"
+
 
 
 ## DEBUG
