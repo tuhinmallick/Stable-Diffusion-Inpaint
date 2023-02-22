@@ -461,6 +461,7 @@ class UNetModel(nn.Module):
         num_heads_upsample=-1,
         use_scale_shift_norm=False,
         freeze_deep_layers = False,
+        fine_tune_attention_layers = False,
         resblock_updown=False,
         use_new_attention_order=False,
         use_spatial_transformer=False,    # custom transformer support
@@ -470,6 +471,7 @@ class UNetModel(nn.Module):
         legacy=True,
     ):
         super().__init__()
+                
         if use_spatial_transformer:
             assert context_dim is not None, 'Fool!! You forgot to include the dimension of your cross-attention conditioning...'
 
@@ -694,11 +696,52 @@ class UNetModel(nn.Module):
         )
 
         if freeze_deep_layers: self.freeze_deep_layers()
+        if fine_tune_attention_layers: self.fine_tune_attention_layers(use_spatial_transformer)
+
 
     def freeze_deep_layers(self):
         for param in self.output_blocks.parameters():
             param.requires_grad = False        
+    
+    '''NEEDS TO BE TUNED IN CASE OF HUGE ARCHITECTURAL CHANGES'''
+    def fine_tune_attention_layers(self, use_spatial_transformer):
+        if not use_spatial_transformer:
+            '''
+            Each attention block is defined as:
+            AttentionBlock(
+                (norm): GroupNorm32(32, 512, eps=1e-05, affine=True)
+                (qkv): Conv1d(512, 1536, kernel_size=(1,), stride=(1,))
+                (attention): QKVAttentionLegacy()
+                (proj_out): Conv1d(512, 512, kernel_size=(1,), stride=(1,))
+            )
+            '''
+            norm_indexes = []
+            keys_to_search = ["norm", "qkv", "proj_out"] # (attention) has no weights, just dot products attention mechanism
+           
+            for idx, (n,p) in enumerate(self.named_parameters()):
+                # circuit to avoid useless loop
+                if "norm.weight" in n:
+                    # check all subsequent keys are correct
+                    # 2 is caused by bias
+                    cond = all([keys_to_search[idx_inner] in list(self.named_parameters())[idx + idx_inner*2][0] for idx_inner in range(1,len(keys_to_search))])
+                    # all in same layer
+                    if cond:
+                        norm_indexes.append((idx, idx  + len(keys_to_search) * 2))
                     
+            if len(norm_indexes) > 0: # just if we find something
+                print("%s attention layers found, fine-tuning just them" % len(norm_indexes))
+                for n,p in self.named_parameters():
+                    p.requires_grad = False
+                for s,e in norm_indexes:
+                    for n,p in list(self.named_parameters())[s:e]:
+                        p.requires_grad = True
+                # for n,p in self.named_parameters():
+                #     print(n, p.requires_grad)
+            else:
+                print("No attention layers found, fine-tuning the entire network")
+        else: # TODO
+            raise NotImplementedError(self.__class__.__name__ + '(Spatial Attention)') 
+       
     def convert_to_fp16(self):
         """
         Convert the torso of the model to float16.
@@ -749,9 +792,6 @@ class UNetModel(nn.Module):
         if self.predict_codebook_ids:
             return self.id_predictor(h)
         else:
-            # out = self.out(h)
-            # print("\nOutput shape of UNET", out.shape)
-            # exit()
             return self.out(h)
 
 

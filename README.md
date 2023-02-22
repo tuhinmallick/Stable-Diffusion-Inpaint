@@ -151,15 +151,16 @@ From [this paper](https://arxiv.org/abs/2002.08438), it seems that fine-tuning o
 
 In order to partially fine-tune the U-NET, add  `freeze_deep_layers: True` under the `unet_config` field in your configuration `.yaml` file. This would remove from the grads calculation the `output_blocks` of the U-NET. 
 
-### Training only attention blocks (TODO)
+### Training only attention blocks
 [This paper](https://openreview.net/pdf?id=0J6afk9DqrR), it seems that fine-tuning only the attention blocks while freezing residual blocks provides higher performance for classical diffusion models.
 As an additional advantage, attention block tuning is more memory-efficient since it only takes 10.3% of the total parameters.
 Again, stable diffusion is a latent diffusion model, but i thought that this results could be transferred also in the latent diffusion space!
 
+In order to partially fine-tune only the U-NET attention layers, add  `fine_tune_attention_layers: True` under the `unet_config` field in your configuration `.yaml` file.
+
 ### Training custom layers only (TODO)
 
 You could also customize the layers you want to freeze. In this case, remove the added `freeze_deep_layers: True` and instead add the `finetune_training_keys: [diffusion_model.input_blocks.0.0]` (in this case, i am just training the input block).
-
 
 
 ## TODO
@@ -167,7 +168,7 @@ You could also customize the layers you want to freeze. In this case, remove the
 - [ ] Describe and produce high-quality reference scripts
 - [ ] Fine-tuning script
 - [x] General dataloader
- -[ ] Integrate [ControlNet mechanism](https://github.com/lllyasviel/ControlNet#guess-anchor)
+- [ ] Integrate [ControlNet mechanism](https://github.com/lllyasviel/ControlNet#guess-anchor)
 
 
 ## Acknowledgements 

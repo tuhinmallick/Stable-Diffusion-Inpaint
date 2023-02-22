@@ -15,3 +15,5 @@ python3 main_inpainting.py --train --name  custom_keyboard_training_FULL_FT_scra
 
 python3 main_inpainting.py --train --name  custom_keyboard_training_FINETUNING_UNET --base  configs/latent-diffusion/inpainting_runaway_customFINETUNING_UNET.yaml  --gpus 1,   --seed  42
 
+
+python3 main_inpainting.py --train --base  configs/latent-diffusion/inpainting_runaway_customFINETUNING_UNET_ATT.yaml  --gpus 1,   --seed  42 --resume logs/2023-02-08_custom_keyboard_training_FINETUNE_ATT/checkpoints/epoch=000029.ckpt
