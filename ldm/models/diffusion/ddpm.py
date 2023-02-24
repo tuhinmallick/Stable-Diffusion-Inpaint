@@ -1659,24 +1659,24 @@ class LatentInpaintDiffusion(LatentDiffusion):
                                                             batch_size=N, ddim=use_ddim,
                                                             ddim_steps=ddim_steps, eta=ddim_eta)
                 
-                samples2, z_denoise_row2 = self.sample_log(cond=c_cat,
-                                                            batch_size=N, ddim=use_ddim,
-                                                            ddim_steps=ddim_steps, eta=ddim_eta)
+                # samples2, z_denoise_row2 = self.sample_log(cond=c_cat,
+                #                                             batch_size=N, ddim=use_ddim,
+                #                                             ddim_steps=ddim_steps, eta=ddim_eta)
                                     
             x_samples = self.decode_first_stage(samples)
             # x_samples_custom = self.decode_first_stage(samples_custom)
-            x_samples_custom2 = self.decode_first_stage(samples2)
+            # x_samples_custom2 = self.decode_first_stage(samples2)
 
             log["samples"] = x_samples
             # log["samples_custom"] = x_samples_custom
-            log["samples2"] = x_samples_custom2
+            # log["samples2"] = x_samples_custom2
             
            
             if plot_denoise_rows:
                 denoise_grid = self._get_denoise_row_from_list(z_denoise_row)
                 log["denoise_row"] = denoise_grid
-                denoise_grid2 = self._get_denoise_row_from_list(z_denoise_row2)
-                log["denoise_row2"] = denoise_grid2
+                # denoise_grid2 = self._get_denoise_row_from_list(z_denoise_row2)
+                # log["denoise_row2"] = denoise_grid2
                 # denoise_grid_custom = self._get_denoise_row_from_list(z_denoise_row_custom)
                 # log["denoise_row_custom"] = denoise_grid_custom
                 # denoise_grid_custom2 = self._get_denoise_row_from_list(z_denoise_row_custom2)

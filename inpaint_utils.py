@@ -3,7 +3,7 @@ from PIL import Image
 from ldm.models.diffusion.ddim import DDIMSampler
 import cv2 
 
-def make_batch(image, mask, device="cuda:0", resize_to = None):
+def make_batch(image, mask, device="cuda:0", resize_to = None, mask_inverted=False):
     image = np.array(Image.open(image).convert("RGB"))
     if image.shape[0]!=resize_to or image.shape[1]!=resize_to:
         image = cv2.resize(src=image, dsize=(resize_to,resize_to), interpolation = cv2.INTER_AREA)
@@ -22,7 +22,10 @@ def make_batch(image, mask, device="cuda:0", resize_to = None):
     mask[mask >= 0.5] = 1
     mask = torch.from_numpy(mask)
 
-    masked_image = (1-mask)*image
+    if mask_inverted:
+        masked_image = mask*image
+    else:
+        masked_image = (1-mask)*image
 
     batch = {"image": image, "mask": mask, "masked_image": masked_image}
 

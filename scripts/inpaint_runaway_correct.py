@@ -60,6 +60,12 @@ if __name__ == "__main__":
         help="yaml file describing the model to initialize",
         required=True        
     )
+    
+    parser.add_argument(
+        "--mask_inverted",
+        action='store_true',
+        help="mask is black over white and not white over black",
+    )
       
     parser.add_argument(
         "--device",
@@ -113,9 +119,9 @@ if __name__ == "__main__":
     with torch.no_grad():
         with scope("Sampling"):
             for image, mask in tqdm(zip(images, masks)):
-                outpath = os.path.join(opt.outdir, "%s_%s_%s.png" % (os.path.split(image)[1].split(".")[0], opt.prefix, ema_prefix , ))
+                outpath = os.path.join(opt.outdir, "%s_%s_%s_%s.png" % (os.path.split(image)[1].split(".")[0], opt.prefix, ema_prefix, os.path.basename(opt.ckpt)))
 
-                batch = make_batch(image, mask, device=device, resize_to=512)
+                batch = make_batch(image, mask, device=device, resize_to=512, mask_inverted = opt.mask_inverted)
                 
                 c = model.cond_stage_model.encode(batch["masked_image"])
                                 
@@ -143,7 +149,10 @@ if __name__ == "__main__":
                 predicted_image = torch.clamp((x_samples_ddim+1.0)/2.0,
                                                 min=0.0, max=1.0)
 
-                inpainted = (1-mask)*image+mask*predicted_image
+                if opt.mask_inverted:
+                    inpainted = mask*image+mask*predicted_image
+                else:
+                    inpainted = (1-mask)*image+mask*predicted_image
                 
                 inpainted = inpainted.cpu().numpy().transpose(0,2,3,1)[0]*255
                 

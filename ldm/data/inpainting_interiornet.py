@@ -10,7 +10,7 @@ import torch
 from einops import rearrange
 import cv2 
 
-class InpaintingBase(Dataset):
+class InpaintingBaseInteriornet(Dataset):
     def __init__(self,
                  csv_file,
                  data_root,
@@ -48,46 +48,6 @@ class InpaintingBase(Dataset):
     def __len__(self):
         return self._length
 
-    def _transform_and_normalize(self, image_path, mask_path):
-        image = Image.open(image_path).convert("RGB")
-        # data = np.array(image)
-        # print(data)
-        mask = Image.open(mask_path)
-
-        # mask = mask.convert("RGB")
-        pil_mask = mask.convert('L')
-        
-        # PIL METHOD
-        # black_image = Image.new('RGB', image.size)
-
-        # invert mask, we want just the background
-        # pil_mask = ImageOps.invert(pil_mask)
-
-        # masked_image = Image.composite(image, black_image, pil_mask)
-
-        # masked_image.save("masked_test.jpg")
-
-        # masked_image = masked_image.convert("RGB")
-
-        # transpose because of ldm/models/diffusion/ddpm.py get_input()
-
-        # image.save("before_transform.jpg")
-        
-        
-        # Transformations
-        image = self.transform(image)
-        # image = rearrange(image, 'c h w -> h w c')
-
-        pil_mask = self.transform_mask(pil_mask)
-        # pil_mask = rearrange(pil_mask, 'c h w -> h w c')
-
-        masked_image = (1-pil_mask)*image
-
-        # masked_image = self.transform(masked_image)
-        # masked_image = rearrange(masked_image, 'c h w -> h w c')
-
-        return image, masked_image, pil_mask
-
     def _transform_and_normalize_inference(self, image_path, mask_path, resize_to):
         image = np.array(Image.open(image_path).convert("RGB"))
         
@@ -122,12 +82,7 @@ class InpaintingBase(Dataset):
         return batch
 
     def __getitem__(self, i):
-        # example = dict((k, self.labels[k][i]) for k in self.labels)
-        # image,masked_image, mask = self._transform_and_normalize(example["file_path_"],example["file_path_mask_"])
-        # example["image"] = image
-        # example["masked_image"] = masked_image
-        # example["mask"] = mask
-        
+                
         example2 = dict((k, self.labels[k][i]) for k in self.labels)
 
         add_dict = self._transform_and_normalize_inference(example2["file_path_"],example2["file_path_mask_"], resize_to=self.size)
@@ -137,7 +92,7 @@ class InpaintingBase(Dataset):
         return example2
 
 
-class InpaintingTrain(InpaintingBase):
+class InpaintingBaseInteriornetTrain(InpaintingBaseInteriornet):
     def __init__(self, csv_file, data_root, **kwargs):
         super().__init__(csv_file=csv_file, partition="train",data_root=data_root,**kwargs)
         self.transform = transforms.Compose([
@@ -151,7 +106,9 @@ class InpaintingTrain(InpaintingBase):
         ])
 
 
-class InpaintingValidation(InpaintingBase):
+
+
+class InpaintingBaseInteriornetValidation(InpaintingBaseInteriornet):
     def __init__(self, csv_file,data_root, **kwargs):
         super().__init__(csv_file=csv_file, partition="validation", data_root=data_root, **kwargs)
         self.transform = transforms.Compose([
@@ -177,9 +134,10 @@ if __name__=="__main__":
     de_transform_mask =  transforms.Compose([ transforms.Normalize(mean = [ 0. ],
                                                      std = [ 1/255]),
                     ])
-    csv_file = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/inpainting_dataset_surrogate/datasetthree_keyboard.csv"
-    data_root = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/inpainting_dataset_surrogate/images/"
-    ip_train = InpaintingTrain(csv_file=csv_file,data_root=data_root, size = 256)
+
+    csv_file = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/open_source_samples/dataframe_interiornet.csv"
+    data_root = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/open_source_samples/"
+    ip_train = InpaintingBaseInteriornetTrain(size = 256,csv_file=csv_file, data_root=data_root)
     ip_train_loader = DataLoader(ip_train, batch_size=1, num_workers=4,
                           pin_memory=True, shuffle=True)
 
@@ -187,7 +145,6 @@ if __name__=="__main__":
         im_keys = ['image', 'masked_image', 'mask']
         for k in im_keys:
             # print(batch[k].shape)               
-            # image_de = rearrange(batch[k], 'b h w c -> b c h w'  )
             image_de = batch[k]
             image_de = (image_de + 1)/2
 
@@ -195,12 +152,11 @@ if __name__=="__main__":
                 image_de = de_transform_mask(image_de)
             else:
                 image_de = de_transform(image_de)
-            
-
             rgb_img = (image_de).type(torch.uint8).squeeze(0)
             # rgb_img = rearrange(rgb_img, 'h w c -> c h w'  )
             # print(rgb_img.shape)
-            
             img = transforms.ToPILImage()(rgb_img)  
             # print(img.size)
             img.save("ldm/data/test_loader_inpaint/%s_test.jpg" % k)
+
+        break
