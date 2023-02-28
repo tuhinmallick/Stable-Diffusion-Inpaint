@@ -88,7 +88,7 @@ model:
     cond_stage_config: __is_first_stage__
 
 data:
-  target: main.DataModuleFromConfig
+  target: main_inpainting.DataModuleFromConfig
   params:
     batch_size: 4
     num_workers: 4

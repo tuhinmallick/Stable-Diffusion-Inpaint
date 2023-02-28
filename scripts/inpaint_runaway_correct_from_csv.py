@@ -4,14 +4,16 @@ from PIL import Image
 from tqdm import tqdm
 import numpy as np
 import torch
+import pandas as pd
 import sys
 sys.path.insert(
    1, "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint")
 from main_inpainting import instantiate_from_config
 from ldm.models.diffusion.ddim import DDIMSampler
-from inpaint_utils import seed_everything
-from inpaint_utils import make_batch
+from inpaint_utils import seed_everything, make_batch, plot_row_original_mask_output
 from contextlib import suppress
+from torchmetrics.image.lpip_similarity import LPIPS
+import cv2
 seed_everything(42)
 
 
@@ -24,10 +26,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Stable Diffusion Inpainting")
     
     parser.add_argument(
-        "--indir",
+        "--csv_file",
         type=str,
         nargs="?",
-        help="dir containing image-mask pairs (`example.png` and `example_mask.png`)",
+        help="csv file containing image_path mask_path and partition column for evaluation",
         required=True
     )
     
@@ -35,7 +37,7 @@ if __name__ == "__main__":
         "--outdir",
         type=str,
         nargs="?",
-        help="dir to write results to",
+        help="dir to write output inpainted images",
         required=True
     )
     
@@ -60,12 +62,7 @@ if __name__ == "__main__":
         help="yaml file describing the model to initialize",
         required=True        
     )
-    
-    parser.add_argument(
-        "--mask_inverted",
-        action='store_true',
-        help="mask is black over white and not white over black",
-    )
+
       
     parser.add_argument(
         "--device",
@@ -82,18 +79,25 @@ if __name__ == "__main__":
     )
     
     parser.add_argument(
+        "--lpips",
+        type=str,
+        default="alex",
+        help="net_type for LPIPS metrics: alex | vgg",
+    )
+
+    parser.add_argument(
         "--ema",
         action='store_true',
         help="use ema weights",
     )
     
-
-
     opt = parser.parse_args()
 
-    masks = sorted(glob.glob(os.path.join(opt.indir, "*_mask.*")))
-
-    images = [x.replace("_mask.png", ".png") for x in masks]
+    # READ FROM CSV
+    df = pd.read_csv(opt.csv_file)
+    masks = df["mask_path"]
+    images = df["image_path"]
+    
     print(f"Found {len(masks)} inputs.")
 
     config = OmegaConf.load(opt.yaml_profile)
@@ -116,12 +120,15 @@ if __name__ == "__main__":
     scope = model.ema_scope if opt.ema else suppress
     ema_prefix = "EMA" if opt.ema else "NOT_EMA"
     
+    # LOAD LPIPS METRIC
+    # lpips = LPIPS(net_type='vgg')
+    lpips = LPIPS(net_type=opt.lpips)
+
     with torch.no_grad():
         with scope("Sampling"):
-            for image, mask in tqdm(zip(images, masks)):
-                outpath = os.path.join(opt.outdir, "%s_%s_%s_%s.png" % (os.path.split(image)[1].split(".")[0], opt.prefix, ema_prefix, os.path.basename(opt.ckpt)))
-
-                batch = make_batch(image, mask, device=device, resize_to=512, mask_inverted = opt.mask_inverted)
+            for image_path, mask_path in tqdm(zip(images, masks)):
+                
+                batch = make_batch(image_path, mask_path, device=device, resize_to=512)
                 
                 c = model.cond_stage_model.encode(batch["masked_image"])
                                 
@@ -142,20 +149,39 @@ if __name__ == "__main__":
 
                 x_samples_ddim = model.decode_first_stage(samples_ddim)
 
+               
+                
+
                 image = torch.clamp((batch["image"]+1.0)/2.0,
                                     min=0.0, max=1.0)
                 mask = torch.clamp((batch["mask"]+1.0)/2.0,
                                     min=0.0, max=1.0)
+                
+                masked_image = torch.clamp((batch["masked_image"]+1.0)/2.0,
+                                    min=0.0, max=1.0)
+                
                 predicted_image = torch.clamp((x_samples_ddim+1.0)/2.0,
                                                 min=0.0, max=1.0)
-
-                if opt.mask_inverted:
-                    inpainted = mask*image+mask*predicted_image
-                else:
-                    inpainted = (1-mask)*image+mask*predicted_image
+                
+                t_im = ((image*2)-1).cpu() # standardize 
+                # Forse è porchetta
+                t_sample = ((predicted_image*2)-1).cpu()
+                lpips_value = lpips(t_im,t_sample).cpu().item()
+                
+                print("\nLPIPS", lpips_value)
+               
+                inpainted = (1-mask)*image+mask*predicted_image
                 
                 inpainted = inpainted.cpu().numpy().transpose(0,2,3,1)[0]*255
                 
                 predicted_image = predicted_image.cpu().numpy().transpose(0,2,3,1)[0]*255
+                
+                outpath = os.path.join(opt.outdir, "%s_%s_%s_%s_%s_%s.png" % (str(round(lpips_value,4)), opt.lpips,os.path.split(os.path.basename(image_path))[1].split(".")[0], opt.prefix, ema_prefix, os.path.basename(opt.ckpt).split(".")[0]))
+
                 print("Save in %s" % outpath)
-                Image.fromarray(predicted_image.astype(np.uint8)).save(outpath)
+                mask = mask.cpu().numpy().transpose(0,2,3,1)[0]*255
+                image = image.cpu().numpy().transpose(0,2,3,1)[0]*255
+                masked_image = masked_image.cpu().numpy().transpose(0,2,3,1)[0]*255
+                
+                image_to_print = plot_row_original_mask_output([{"masked_image":masked_image, "image":image, "predicted_image":predicted_image}], image_size = 512)
+                Image.fromarray(image_to_print.astype(np.uint8)).save(outpath)

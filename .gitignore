@@ -19,3 +19,4 @@ data/samples/readme_images/*.mp4
 data/samples/readme_images/*.webm
 data/open_source_samples/interiornet_sample/*
 data/open_source_samples/*.csv
+data/samples/interiornet_output/*

@@ -23,5 +23,10 @@ python3 main_inpainting.py --train --base  configs/latent-diffusion/inpainting_r
 
 ############ interionet ############
 
-
 python3 main_inpainting.py --train --name  custom_interionet_FULL_TRAINING --base  configs/latent-diffusion/inpainting_runaway_interiornet_FULL.yaml  --gpus 0,   --seed  42
+
+
+python3 main_inpainting.py --train --name  custom_interionet_FULL_TRAINING_fixed_LR --base  configs/latent-diffusion/inpainting_runaway_interiornet_FULL_modified.yaml  --gpus 1,   --seed  42
+
+
+python3 main_inpainting.py --train --name  custom_interionet_FULL_TRAINING_test_scheduler --base  configs/latent-diffusion/inpainting_runaway_interiornet_FULL_LR_LOWER.yaml  --gpus 0,   --seed  42

@@ -169,6 +169,7 @@ You could also customize the layers you want to freeze. In this case, remove the
 - [ ] Fine-tuning script
 - [x] General dataloader
 - [ ] Integrate [ControlNet mechanism](https://github.com/lllyasviel/ControlNet#guess-anchor)
+- [] Use weights of text-conditioned inpainting for inpainting only, by filtering out, only the weights of the U-net so you could also use the VAE.
 
 
 ## Acknowledgements 

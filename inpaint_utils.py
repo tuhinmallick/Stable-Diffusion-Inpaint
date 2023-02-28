@@ -2,6 +2,7 @@ import torch, numpy as np
 from PIL import Image
 from ldm.models.diffusion.ddim import DDIMSampler
 import cv2 
+from typing import List, Dict
 
 def make_batch(image, mask, device="cuda:0", resize_to = None, mask_inverted=False):
     image = np.array(Image.open(image).convert("RGB"))
@@ -128,3 +129,34 @@ def validate_state_dicts(model_state_dict_1, model_state_dict_2):
             if "model.diffusion_model.out." in k_1:
                 print(f"Tensor mismatch: {v_1} vs {v_2}")
             # return False
+            
+
+# dict contains the images already
+def plot_row_original_mask_output(list_tuple:List[Dict], image_size = 512) -> np.array:
+    num_cols = len(list_tuple[0]) # number of keys should be the same in very entry
+    num_rows = len(list_tuple) # number elements
+    canvas_width = image_size * num_cols
+    canvas_height = image_size * num_rows # fixed at one tuple, can be generalized of course
+
+    canvas = np.zeros((canvas_height, canvas_width, 3), dtype=np.uint8)
+    
+    for row in range(num_rows):
+        for col, col_desc in enumerate(list_tuple[row].keys()):
+            # Calculate the position where the image should be placed
+            x = col * image_size
+            y = row * image_size
+            
+            # Get the corresponding image from the list
+            
+            img = list_tuple[row][col_desc]
+            if col_desc == "mask":
+                img = cv2.cvtColor(img,cv2.COLOR_GRAY2RGB)
+
+            # Resize the image to fit in the grid cell
+            img = cv2.resize(img, (image_size, image_size))
+            
+            # Place the image on the canvas at the calculated position
+            canvas[y:y+image_size, x:x+image_size, :] = img # cv2.addWeighted(canvas[y:y+image_size, x:x+image_size, :], 0.5, img, 0.5, 0)
+
+    return canvas
+    

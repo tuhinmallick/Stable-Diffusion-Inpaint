@@ -129,7 +129,7 @@ def get_parser(**parser_kwargs):
         type=str2bool,
         nargs="?",
         const=True,
-        default=True,
+        default=False,
         help="scale base-lr by ngpu * batch_size * n_accumulate",
     )
     return parser
@@ -427,25 +427,6 @@ class CUDACallback(Callback):
         except AttributeError:
             pass
 
-class FeatureExtractorFreezeUnfreeze(BaseFinetuning):
-    def __init__(self, unfreeze_at_epoch=10):
-        super().__init__()
-        self._unfreeze_at_epoch = unfreeze_at_epoch
-
-    def freeze_before_training(self, pl_module):
-        # If you want to freeze any module use
-        # self.freeze(pl_module....) ## convolution block
-        pass
-
-    def finetune_function(self, pl_module, current_epoch, optimizer, optimizer_idx):
-        # When `current_epoch` do something, example unfreezing weights.
-        # self.unfreeze_and_add_param_group(
-        #         modules=pl_module....,
-        #         optimizer=optimizer,
-        #         train_bn=True,
-        #     )
-        pass
-
 if __name__ == "__main__":
 
     now ="2023-02-08" # FIXED TO AVOID WASTING SPACE
@@ -596,9 +577,6 @@ if __name__ == "__main__":
 
         # add callback which sets up log directory
         default_callbacks_cfg = {
-            # "fine_tune":{
-            #     "target": "main_inpainting.FeatureExtractorFreezeUnfreeze",
-            # },
             "setup_callback": {
                 "target": "main_inpainting.SetupCallback",
                 "params": {

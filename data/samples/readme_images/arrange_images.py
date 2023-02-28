@@ -1,6 +1,5 @@
 import cv2, glob, random, os
 import numpy as np
-
 random.seed(42)
 
 input_images_folder = "../inpainting_original_paper/"

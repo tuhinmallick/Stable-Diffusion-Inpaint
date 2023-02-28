@@ -79,7 +79,8 @@ class DDPM(pl.LightningModule):
         super().__init__()
         
         ################################## TODO: automatic optimization by me 
-        self.automatic_optimization = False
+        self.automatic_optimization = True
+        # self.automatic_optimization = False
         ##################################
         assert parameterization in ["eps", "x0"], 'currently only supporting "eps" and "x0"'
         self.parameterization = parameterization
@@ -349,14 +350,16 @@ class DDPM(pl.LightningModule):
         return loss, loss_dict
 
     def training_step(self, batch, batch_idx):
+        print("ACTUAL LEARNING RATE %s" % self.optimizers().param_groups[0]['lr'])
+
         loss, loss_dict = self.shared_step(batch)
 
-        opt = self.optimizers()
-        opt.zero_grad()
+        # opt = self.optimizers()
+        # opt.zero_grad()
       
-        self.manual_backward(loss)
+        # self.manual_backward(loss)
 
-        opt.step()
+        # opt.step()
         
         self.log_dict(loss_dict, prog_bar=True,
                       logger=True, on_step=True, on_epoch=True)
@@ -367,8 +370,8 @@ class DDPM(pl.LightningModule):
                 
         if self.use_scheduler:
             lr = self.optimizers().param_groups[0]['lr']
-            print("ACTUAL LEARNING RATE %s" % lr)
-            self.lr_schedulers().step()
+            # print("ACTUAL LEARNING RATE %s" % lr)
+            # self.lr_schedulers().step()
             self.log('lr_abs', lr, prog_bar=True, logger=True, on_step=True, on_epoch=False)
 
         return loss
@@ -383,6 +386,7 @@ class DDPM(pl.LightningModule):
         self.log_dict(loss_dict_ema, prog_bar=False, logger=True, on_step=False, on_epoch=True)
 
     def on_train_batch_end(self, *args, **kwargs):
+        print("ACTUAL LEARNING RATE %s" % self.optimizers().param_groups[0]['lr'])
         if self.use_ema:
             self.model_ema(self.model)
 
@@ -1396,29 +1400,29 @@ class LatentDiffusion(DDPM):
                 return {key: log[key] for key in return_keys}
         return log
 
-    def configure_optimizers(self):
-        lr = self.learning_rate
-        params = list(self.model.parameters())
-        if self.cond_stage_trainable:
-            print(f"{self.__class__.__name__}: Also optimizing conditioner params!")
-            params = params + list(self.cond_stage_model.parameters())
-        if self.learn_logvar:
-            print('Diffusion model optimizing logvar')
-            params.append(self.logvar)
-        opt = torch.optim.AdamW(params, lr=lr)
-        if self.use_scheduler:
-            assert 'target' in self.scheduler_config
-            scheduler = instantiate_from_config(self.scheduler_config)
+    # def configure_optimizers(self):
+    #     lr = self.learning_rate
+    #     params = list(self.model.parameters())
+    #     if self.cond_stage_trainable:
+    #         print(f"{self.__class__.__name__}: Also optimizing conditioner params!")
+    #         params = params + list(self.cond_stage_model.parameters())
+    #     if self.learn_logvar:
+    #         print('Diffusion model optimizing logvar')
+    #         params.append(self.logvar)
+    #     opt = torch.optim.AdamW(params, lr=lr)
+    #     if self.use_scheduler:
+    #         assert 'target' in self.scheduler_config
+    #         scheduler = instantiate_from_config(self.scheduler_config)
 
-            print("Setting up LambdaLR scheduler...")
-            scheduler = [
-                {
-                    'scheduler': LambdaLR(opt, lr_lambda=scheduler.schedule),
-                    'interval': 'step',
-                    'frequency': 1
-                }]
-            return [opt], scheduler
-        return opt
+    #         print("Setting up LambdaLR scheduler...")
+    #         scheduler = [
+    #             {
+    #                 'scheduler': LambdaLR(opt, lr_lambda=scheduler.schedule),
+    #                 'interval': 'step',
+    #                 'frequency': 1
+    #             }]
+    #         return [opt], scheduler
+    #     return opt
 
     @torch.no_grad()
     def to_rgb(self, x):
@@ -1537,17 +1541,6 @@ class LatentInpaintDiffusion(LatentDiffusion):
     def configure_optimizers(self):
         lr = self.learning_rate
         params = list(self.model.parameters())
-        
-        # if self.finetune_training_keys and len(self.finetune_training_keys)>0:
-        #     params = []
-        #     # requires grad to False except for key
-        #     for n,p in self.model.named_parameters():
-        #         if any([x in n for x in self.finetune_training_keys]):
-        #         # if n in self.finetune_training_keys:
-        #             p.requires_grad = True
-        #             params.append(p)
-        #         else:
-        #             p.requires_grad = True
 
         if self.cond_stage_trainable:
             print(f"{self.__class__.__name__}: Also optimizing conditioner params!")
@@ -1557,7 +1550,8 @@ class LatentInpaintDiffusion(LatentDiffusion):
             params.append(self.logvar)
         
         # Optimization made by me
-        opt = torch.optim.AdamW(filter(lambda p: p.requires_grad, params), lr=lr)
+        opt = torch.optim.AdamW(params, lr=lr)
+        # opt = torch.optim.AdamW(filter(lambda p: p.requires_grad, params), lr=lr)
 
         if self.use_scheduler:
             assert 'target' in self.scheduler_config

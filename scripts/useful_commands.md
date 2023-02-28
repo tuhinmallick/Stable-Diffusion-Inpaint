@@ -8,15 +8,13 @@ python scripts/inpaint_runaway_correct.py --indir "data/INPAINTING/inpainting_ex
 
 python scripts/inpaint_runaway_correct.py --indir "data/INPAINTING/inpainting_examples/" --outdir "data/INPAINTING/output_images_debug/" --ckpt "logs/2023-02-08_custom_place_training_different_samplerSAMESEEDNOTEMA3/checkpoints/epoch=000685.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_inference.yaml" --device cuda:0 --ema --prefix "PLACES_OVERFIT"
 
-## CHRISTINA
+## INTERIORNET
 
-python scripts/inpaint_runaway_correct.py --indir "data/samples/interiornet_test/" --outdir "data/samples/custom_inpainting/output/" --ckpt "models/ldm/inpainting_big/model_compvis.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_inference.yaml" --device cuda:0 --prefix "christina"
+python scripts/inpaint_runaway_correct.py --indir "data/samples/interiornet_test/" --outdir "data/samples/interiornet_output/" --ckpt "logs/2023-02-08_custom_interionet_FULL_TRAINING_fixed_LR/checkpoints/last.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_inference.yaml" --device cuda:0 --prefix "interiornet"
 
+### Validation set
 
-python scripts/inpaint_runaway_correct.py --indir "data/samples/interiornet_test/" --outdir "data/samples/custom_inpainting/output/" --ckpt "logs/2023-02-08_custom_christina_FULL_TRAINING/checkpoints/last.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_inference.yaml" --device cuda:0 --prefix "christina"
-
-python scripts/inpaint_runaway_correct.py --indir "data/samples/interiornet_test/" --outdir "data/samples/custom_inpainting/output/" --ckpt "logs/2023-02-08_custom_christina_FULL_TRAINING/checkpoints/epoch=000004.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_inference.yaml" --device cuda:0 --prefix "christina"
-
+python scripts/inpaint_runaway_correct_from_csv.py --csv_file "data/open_source_samples/dataframe_filtered_test.csv" --outdir "data/samples/interiornet_output/validation/" --ckpt "logs/2023-02-08_custom_interionet_FULL_TRAINING_fixed_LR/checkpoints/last.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_inference.yaml" --device cuda:0 --prefix "interiornet_validation"
 
 
 ## KEYBOARD NOT EMA VS EMA
