@@ -34,7 +34,7 @@ val_samples = int(round(len(path_intersection)*validation_percentage))
 sampl_validation_rate = len(path_intersection)//val_samples
 print(sampl_validation_rate)
 how_many_val = 1
-prefix_to_remove = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/christina_sample/"
+prefix_to_remove = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/open_source_samples/"
 
 prefix_image = cam_folder.replace(prefix_to_remove,"")
 prefix_mask = mask_folder.replace(prefix_to_remove,"")

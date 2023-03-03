@@ -96,13 +96,13 @@ data:
     train:
       target: ldm.data.inpainting_interiornet.InpaintingBaseInteriornetTrain
       params:
-        csv_file: data/open_source_samples/dataframe_interiornet.csv
+        csv_file: data/open_source_samples/dataframe_interiornet_lama.csv
         data_root: data/open_source_samples/
         size: 512
     validation:
       target: ldm.data.inpainting_interiornet.InpaintingBaseInteriornetValidation
       params:
-        csv_file: data/open_source_samples/dataframe_interiornet.csv
+        csv_file: data/open_source_samples/dataframe_interiornet_lama.csv
         data_root: data/open_source_samples/
         size: 512
 

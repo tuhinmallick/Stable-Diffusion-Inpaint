@@ -212,8 +212,9 @@ class DataModuleFromConfig(pl.LightningDataModule):
             init_fn = worker_init_fn
         else:
             init_fn = None
+        # TODO: cambiare shuffle con True?, messo a true seguendo # https://github.com/lllyasviel/ControlNet/blob/d249f5bfc66c7af9b3102dccc2162c6d17270748/tutorial_train.py#L29
         return DataLoader(self.datasets["train"], batch_size=self.batch_size,
-                          num_workers=self.num_workers, shuffle=False if is_iterable_dataset else True,
+                          num_workers=self.num_workers, shuffle=True if is_iterable_dataset else True,
                           worker_init_fn=init_fn)
 
     def _val_dataloader(self, shuffle=False):

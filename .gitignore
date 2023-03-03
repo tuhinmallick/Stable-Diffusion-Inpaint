@@ -20,3 +20,5 @@ data/samples/readme_images/*.webm
 data/open_source_samples/interiornet_sample/*
 data/open_source_samples/*.csv
 data/samples/interiornet_output/*
+data/open_source_samples/interiornet_mask_generated/*
+data/modules/lama/saicinpainting/evaluation/masks/countless/memprof/countless2d_gcim_N_1000.png

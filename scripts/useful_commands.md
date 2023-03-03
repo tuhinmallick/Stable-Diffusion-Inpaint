@@ -14,7 +14,19 @@ python scripts/inpaint_runaway_correct.py --indir "data/samples/interiornet_test
 
 ### Validation set
 
+python scripts/inpaint_runaway_correct_from_csv.py --csv_file "data/open_source_samples/dataframe_filtered_test.csv" --outdir "data/samples/interiornet_output/validation/" --ckpt "models/ldm/inpainting_big/model_compvis.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_inference.yaml" --device cuda:0 --prefix "interiornet_validation_compvis"
+
 python scripts/inpaint_runaway_correct_from_csv.py --csv_file "data/open_source_samples/dataframe_filtered_test.csv" --outdir "data/samples/interiornet_output/validation/" --ckpt "logs/2023-02-08_custom_interionet_FULL_TRAINING_fixed_LR/checkpoints/last.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_inference.yaml" --device cuda:0 --prefix "interiornet_validation"
+
+python scripts/inpaint_runaway_correct_from_csv.py --csv_file "data/open_source_samples/dataframe_filtered_test.csv" --outdir "data/samples/interiornet_output/validation_lr/" --ckpt "logs/2023-02-08_custom_interionet_FULL_TRAINING_test_scheduler/checkpoints/epoch=000115.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_inference.yaml" --device cuda:0 --prefix "interiornet_validation_lr"
+
+
+
+### AVERAGE Validation set
+
+python scripts/inpaint_runaway_average.py --csv_file "data/open_source_samples/dataframe_filtered_test.csv" --outdir "data/samples/interiornet_output/validation_average/" --ckpt "models/ldm/inpainting_big/model_compvis.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_inference.yaml" --device cuda:0 --prefix "interiornet_validation_compvis"
+
+
 
 
 ## KEYBOARD NOT EMA VS EMA

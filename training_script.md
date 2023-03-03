@@ -30,3 +30,8 @@ python3 main_inpainting.py --train --name  custom_interionet_FULL_TRAINING_fixed
 
 
 python3 main_inpainting.py --train --name  custom_interionet_FULL_TRAINING_test_scheduler --base  configs/latent-diffusion/inpainting_runaway_interiornet_FULL_LR_LOWER.yaml  --gpus 0,   --seed  42
+
+
+############ interionet LAMA ############
+
+python3 main_inpainting.py --train --name  custom_interionet_FULL_TRAINING_LAMA --base  configs/latent-diffusion/inpainting_runaway_interiornet_LAMA_LR_LOWER.yaml  --gpus 1,   --seed  42

@@ -4,6 +4,24 @@ from ldm.models.diffusion.ddim import DDIMSampler
 import cv2 
 from typing import List, Dict
 
+def average_between_images(list_of_images):
+    return np.mean([np.array(Image.open(x).convert("RGB")) for x in list_of_images])
+    
+
+
+def make_image(image,  device="cuda:0",resize_to = None):
+    image = np.array(Image.open(image).convert("RGB"))
+    
+    if image.shape[0]!=resize_to or image.shape[1]!=resize_to:
+        image = cv2.resize(src=image, dsize=(resize_to,resize_to), interpolation = cv2.INTER_AREA)
+    image = image.astype(np.float32)/255.0
+    
+    image = image[None].transpose(0,3,1,2)
+    image = torch.from_numpy(image)
+    
+    return image.to(device=device) # remove batch index
+
+
 def make_batch(image, mask, device="cuda:0", resize_to = None, mask_inverted=False):
     image = np.array(Image.open(image).convert("RGB"))
     if image.shape[0]!=resize_to or image.shape[1]!=resize_to:

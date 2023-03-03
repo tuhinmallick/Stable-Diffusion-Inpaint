@@ -10,7 +10,7 @@ sys.path.insert(
    1, "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint")
 from main_inpainting import instantiate_from_config
 from ldm.models.diffusion.ddim import DDIMSampler
-from inpaint_utils import seed_everything, make_batch, plot_row_original_mask_output
+from inpaint_utils import seed_everything, make_batch, make_image
 from contextlib import suppress
 from torchmetrics.image.lpip_similarity import LPIPS
 import cv2
@@ -18,7 +18,6 @@ seed_everything(42)
 
 
 # RUN SCRIPT
-# python scripts/inpaint_runaway_correct.py --indir "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/INPAINTING/inpainting_examples/" --outdir "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/INPAINTING/output_images_debug/"
 
 
 if __name__ == "__main__":
@@ -95,10 +94,21 @@ if __name__ == "__main__":
 
     # READ FROM CSV
     df = pd.read_csv(opt.csv_file)
-    masks = df["mask_path"]
-    images = df["image_path"]
     
-    print(f"Found {len(masks)} inputs.")
+    total_images = 7
+    mean_index = total_images//2
+    # FIRST 7 AND TAKE THE FOURTH AS THE ONE TO BE GENERATED
+    df = df.head(total_images)
+    df_to_generate_with_mean = df.iloc[mean_index]
+    df = df.drop(mean_index,axis=0)
+    # print(df)
+    # print(df_to_generate_with_mean)
+    # exit()
+    
+    masks_for_mean = df["mask_path"]
+    images_for_mean = df["image_path"]
+    
+    print(f"Found {len(masks_for_mean)} inputs.")
 
     config = OmegaConf.load(opt.yaml_profile)
     model = instantiate_from_config(config.model)
@@ -120,18 +130,18 @@ if __name__ == "__main__":
     scope = model.ema_scope if opt.ema else suppress
     ema_prefix = "EMA" if opt.ema else "NOT_EMA"
     
-    # LOAD LPIPS METRIC
-    # lpips = LPIPS(net_type='vgg')
-    lpips = LPIPS(net_type=opt.lpips)
-
+    acc_representations = []
+    out_paths = []
+    
     with torch.no_grad():
         with scope("Sampling"):
-            for image_path, mask_path in tqdm(zip(images, masks)):
+            for image_path, mask_path in tqdm(zip(images_for_mean, masks_for_mean)):
                 
                 batch = make_batch(image_path, mask_path, device=device, resize_to=512)
                 
                 c = model.cond_stage_model.encode(batch["masked_image"])
-                                
+                # Average of different representations and encode 
+                
                 cc = torch.nn.functional.interpolate(batch["mask"],
                                                         size=c.shape[-2:])
 
@@ -149,6 +159,9 @@ if __name__ == "__main__":
 
                 x_samples_ddim = model.decode_first_stage(samples_ddim)
 
+               
+                
+
                 image = torch.clamp((batch["image"]+1.0)/2.0,
                                     min=0.0, max=1.0)
                 mask = torch.clamp((batch["mask"]+1.0)/2.0,
@@ -159,25 +172,66 @@ if __name__ == "__main__":
                 
                 predicted_image = torch.clamp((x_samples_ddim+1.0)/2.0,
                                                 min=0.0, max=1.0)
-                
+                               
                 inpainted = (1-mask)*image+mask*predicted_image
                 
-                 # Forse è porchetta
-                t_im = ((image*2)-1).cpu() # standardize 
-                t_samples = ((inpainted*2)-1).cpu() # standardize
-                lpips_value = lpips(t_im,t_samples).cpu().item()
-                print("\nLPIPS", lpips_value)
-                
                 inpainted = inpainted.cpu().numpy().transpose(0,2,3,1)[0]*255
-                
-                predicted_image = predicted_image.cpu().numpy().transpose(0,2,3,1)[0]*255
-                
-                outpath = os.path.join(opt.outdir, "%s_%s_%s_%s_%s_%s.png" % (str(round(lpips_value,4)), opt.lpips,os.path.split(os.path.basename(image_path))[1].split(".")[0], opt.prefix, ema_prefix, os.path.basename(opt.ckpt).split(".")[0]))
+                                
+                outpath = os.path.join(opt.outdir, "%s_%s_%s_%s.png" % (os.path.split(os.path.basename(image_path))[1].split(".")[0], opt.prefix, ema_prefix, os.path.basename(opt.ckpt).split(".")[0]))
+                Image.fromarray(inpainted.astype(np.uint8)).save(outpath)
+                out_paths.append(outpath)
+            # RE-ENCODE FIRST STAGE ALL GENERATED IMAGES AND MEAN THEM WITH NOVEL TO INPAINT
+            
+            stacked_representation = torch.stack([model.cond_stage_model.encode(make_image(x,device=device, resize_to=512)) for x in out_paths], dim = 0).squeeze()
+            print(stacked_representation.shape)
+            mean_representation = torch.mean(stacked_representation, dim = 0)
+            print(mean_representation.shape)
+            # plot mean representation 
+            x_samples_mean = model.decode_first_stage(mean_representation.unsqueeze(0))
+                        
+            x_samples_mean = x_samples_mean.cpu().numpy().transpose(0,2,3,1)[0]*255
+                            
+            outpath = os.path.join(opt.outdir, "%s_%s_%s_AVERAGE.png" % (os.path.split(os.path.basename(image_path))[1].split(".")[0], opt.prefix, ema_prefix))
+            Image.fromarray(x_samples_mean.astype(np.uint8)).save(outpath)
 
-                print("Save in %s" % outpath)
-                mask = mask.cpu().numpy().transpose(0,2,3,1)[0]*255
-                image = image.cpu().numpy().transpose(0,2,3,1)[0]*255
-                masked_image = masked_image.cpu().numpy().transpose(0,2,3,1)[0]*255
-                
-                image_to_print = plot_row_original_mask_output([{"masked_image":masked_image, "image":image, "predicted_image":inpainted}], image_size = 512)
-                Image.fromarray(image_to_print.astype(np.uint8)).save(outpath)
+            
+            # ENCODE NOVEL IMAGE
+            # Average of different representations and encode 
+            novel_batch = make_batch(df_to_generate_with_mean["image_path"], df_to_generate_with_mean["mask_path"], device=device, resize_to=512)
+
+            c_new = model.cond_stage_model.encode(novel_batch["masked_image"]).squeeze()
+            mean_c = torch.mean(torch.stack([c_new, mean_representation], dim = 0), dim = 0).unsqueeze(0)
+            
+            cc_new = torch.nn.functional.interpolate(novel_batch["mask"],
+                                                    size=c.shape[-2:])
+
+            c_fused = torch.cat((mean_c, cc_new), dim=1)
+
+
+            shape = (3,) + c.shape[2:]
+            samples_ddim, _ = sampler.sample(S=opt.steps,
+                                                conditioning=c_fused,
+                                                batch_size=c_fused.shape[0],
+                                                shape=shape,
+                                                verbose=False)
+
+            x_samples_ddim = model.decode_first_stage(samples_ddim)
+
+            
+            image = torch.clamp((novel_batch["image"]+1.0)/2.0,
+                                min=0.0, max=1.0)
+            mask = torch.clamp((novel_batch["mask"]+1.0)/2.0,
+                                min=0.0, max=1.0)
+            
+            masked_image = torch.clamp((novel_batch["masked_image"]+1.0)/2.0,
+                                min=0.0, max=1.0)
+            
+            predicted_image = torch.clamp((x_samples_ddim+1.0)/2.0,
+                                            min=0.0, max=1.0)
+                            
+            inpainted = (1-mask)*image+mask*predicted_image
+            
+            inpainted = inpainted.cpu().numpy().transpose(0,2,3,1)[0]*255
+                            
+            outpath = os.path.join(opt.outdir, "%s_%s_%s_FUSION.png" % (os.path.split(os.path.basename(image_path))[1].split(".")[0], opt.prefix, ema_prefix))
+            Image.fromarray(inpainted.astype(np.uint8)).save(outpath)

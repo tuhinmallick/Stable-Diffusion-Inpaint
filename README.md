@@ -170,6 +170,12 @@ You could also customize the layers you want to freeze. In this case, remove the
 - [x] General dataloader
 - [ ] Integrate [ControlNet mechanism](https://github.com/lllyasviel/ControlNet#guess-anchor)
 - [] Use weights of text-conditioned inpainting for inpainting only, by filtering out, only the weights of the U-net so you could also use the VAE.
+- [] Use [ConvLSTM](https://github.com/ndrplz/ConvLSTM_pytorch/tree/master) for spatio-temporal coherency into the residual blocks probably (https://arxiv.org/pdf/2101.12072.pdf).
+
+## Learning rate evaluations
+
+- Fixed Learning rate (4e-6) provides better results for fine-tuning for few epochs and small datasets;
+- CosineScheduler fits better longer training process with huge datasets;
 
 
 ## Acknowledgements 
