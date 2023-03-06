@@ -17,6 +17,7 @@ from ldm.modules.diffusionmodules.openaimodel import UNetModel, TimestepEmbedSeq
 from ldm.models.diffusion.ddpm import LatentDiffusion,LatentInpaintDiffusion
 from ldm.util import log_txt_as_img, exists, instantiate_from_config
 from ldm.models.diffusion.ddim import DDIMSampler
+from torch.optim.lr_scheduler import LambdaLR
 
 
 class ControlledUnetModel(UNetModel):
@@ -307,20 +308,24 @@ class ControlNet(nn.Module):
         return outs
 
 
-class ControlLDM(LatentInpaintDiffusion):
+class ControlLDMInPaintConcat(LatentDiffusion):
 
-# class ControlLDM(LatentDiffusion):
-
-    def __init__(self, control_stage_config, control_key, only_mid_control, *args, **kwargs):
+    def __init__(self, control_stage_config, control_key,ckpt_path, only_mid_control, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.control_model = instantiate_from_config(control_stage_config)
         self.control_key = control_key
         self.only_mid_control = only_mid_control
         self.control_scales = [1.0] * 13
+        self.concat_keys =("masked_image","mask")
+        ignore_keys = kwargs.pop("ignore_keys", list())
+        if exists(ckpt_path): self.init_from_ckpt(ckpt_path, ignore_keys)
 
     @torch.no_grad()
     def get_input(self, batch, k, bs=None, *args, **kwargs):
-        x, c = super().get_input(batch, self.first_stage_key, *args, **kwargs)
+        # x, c = super().get_input(batch, self.first_stage_key, *args, **kwargs)
+        z, c, x, xrec, xc = super().get_input(batch, self.first_stage_key, return_first_stage_outputs=True,
+                                    force_c_encode=True, return_original_cond=True, bs=bs)
+        
         control = batch[self.control_key]
         if bs is not None:
             control = control[:bs]
@@ -336,26 +341,15 @@ class ControlLDM(LatentInpaintDiffusion):
         # Togli tutti cond txt da qua
         cond_txt = None
         # cond_txt = torch.cat(cond['c_crossattn'], 1)
-
-        if cond['c_concat'] is None:
-            eps = diffusion_model(x=x_noisy, timesteps=t, context=cond_txt, control=None, only_mid_control=self.only_mid_control)
-        else:
-            control = self.control_model(x=x_noisy, hint=torch.cat(cond['c_concat'], 1), timesteps=t, context=cond_txt)
-            control = [c * scale for c, scale in zip(control, self.control_scales)]
-            eps = diffusion_model(x=x_noisy, timesteps=t, context=cond_txt, control=control, only_mid_control=self.only_mid_control)
-
+        control = self.control_model(x=x_noisy, hint=torch.cat(cond['c_concat'], 1), timesteps=t, context=cond_txt)
+        control = [c * scale for c, scale in zip(control, self.control_scales)]
+        eps = diffusion_model(x=x_noisy, timesteps=t, context=cond_txt, control=control, only_mid_control=self.only_mid_control)
+       
         return eps
 
     @torch.no_grad()
-    def get_unconditional_conditioning(self, N):
-        return self.get_learned_conditioning([""] * N)
-
-    @torch.no_grad()
-    def log_images(self, batch, N=4, n_row=2, sample=False, ddim_steps=50, ddim_eta=0.0, return_keys=None,
-                   quantize_denoised=True, inpaint=True, plot_denoise_rows=False, plot_progressive_rows=True,
-                   plot_diffusion_rows=False, unconditional_guidance_scale=9.0, unconditional_guidance_label=None,
-                   use_ema_scope=True,
-                   **kwargs):
+    def log_images(self, batch, N=4, n_row=2, sample=False, ddim_steps=50, ddim_eta=0.0,plot_denoise_rows=False, 
+                   plot_diffusion_rows=False, unconditional_guidance_scale=9.0                   **kwargs):
         use_ddim = ddim_steps is not None
 
         log = dict()
@@ -396,28 +390,8 @@ class ControlLDM(LatentInpaintDiffusion):
                 denoise_grid = self._get_denoise_row_from_list(z_denoise_row)
                 log["denoise_row"] = denoise_grid
 
-        if unconditional_guidance_scale > 1.0:
-            uc_cross = self.get_unconditional_conditioning(N)
-            uc_cat = c_cat  # torch.zeros_like(c_cat)
-            uc_full = {"c_concat": [uc_cat], "c_crossattn": [uc_cross]}
-            samples_cfg, _ = self.sample_log(cond={"c_concat": [c_cat], "c_crossattn": [c]},
-                                             batch_size=N, ddim=use_ddim,
-                                             ddim_steps=ddim_steps, eta=ddim_eta,
-                                             unconditional_guidance_scale=unconditional_guidance_scale,
-                                             unconditional_conditioning=uc_full,
-                                             )
-            x_samples_cfg = self.decode_first_stage(samples_cfg)
-            log[f"samples_cfg_scale_{unconditional_guidance_scale:.2f}"] = x_samples_cfg
-
         return log
 
-    @torch.no_grad()
-    def sample_log(self, cond, batch_size, ddim, ddim_steps, **kwargs):
-        ddim_sampler = DDIMSampler(self)
-        b, c, h, w = cond["c_concat"][0].shape
-        shape = (self.channels, h // 8, w // 8)
-        samples, intermediates = ddim_sampler.sample(ddim_steps, batch_size, shape, cond, verbose=False, **kwargs)
-        return samples, intermediates
 
     def configure_optimizers(self):
         lr = self.learning_rate
@@ -426,7 +400,21 @@ class ControlLDM(LatentInpaintDiffusion):
             params += list(self.model.diffusion_model.output_blocks.parameters())
             params += list(self.model.diffusion_model.out.parameters())
         opt = torch.optim.AdamW(params, lr=lr)
+        
+        if self.use_scheduler:
+            assert 'target' in self.scheduler_config
+            scheduler = instantiate_from_config(self.scheduler_config)
+
+            print("Setting up LambdaLR scheduler...")
+            scheduler = [
+                {
+                    'scheduler': LambdaLR(opt, lr_lambda=scheduler.schedule),
+                    'interval': 'step',
+                    'frequency': 1
+                }]
+            return [opt], scheduler
         return opt
+    
 
     def low_vram_shift(self, is_diffusing):
         if is_diffusing:

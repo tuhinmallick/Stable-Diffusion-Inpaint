@@ -10,7 +10,7 @@ import torch
 from einops import rearrange
 import cv2 
 
-class InpaintingBaseInteriornet(Dataset):
+class InpaintingBaseInteriornetSegmentation(Dataset):
     def __init__(self,
                  csv_file,
                  data_root,
@@ -36,6 +36,7 @@ class InpaintingBaseInteriornet(Dataset):
 
         self.image_paths = self.csv_df["image_path"]
         self.mask_image = self.csv_df["mask_path"]
+        self.segmask_image = self.csv_df["segmask_path"]
         self.labels = {
             "relative_file_path_": [l for l in self.image_paths],
             "file_path_": [os.path.join(self.data_root, l)
@@ -43,12 +44,15 @@ class InpaintingBaseInteriornet(Dataset):
             "relative_file_path_mask_": [l for l in self.mask_image],
             "file_path_mask_": [os.path.join(self.data_root, l)
                            for l in self.mask_image],
+            "relative_file_path_segmask_": [l for l in self.segmask_image],
+            "file_path_segmask_": [os.path.join(self.data_root, l)
+                           for l in self.segmask_image],
         }
 
     def __len__(self):
         return self._length
 
-    def _transform_and_normalize_inference(self, image_path, mask_path, resize_to):
+    def _transform_and_normalize_inference(self, image_path, mask_path, seg_mask_path, resize_to):
         image = np.array(Image.open(image_path).convert("RGB"))
         
         if image.shape[0]!=resize_to or image.shape[1]!=resize_to:
@@ -70,8 +74,16 @@ class InpaintingBaseInteriornet(Dataset):
         mask = torch.from_numpy(mask)
 
         masked_image = (1-mask)*image
+        
+        ## SEGMENTATION MASK
+        seg_mask = np.array(Image.open(seg_mask_path).convert("RGB"))
 
-        batch = {"image": image, "mask": mask, "masked_image": masked_image}
+        seg_mask = cv2.resize(seg_mask, (resize_to, resize_to), interpolation=cv2.INTER_NEAREST)
+        seg_mask = seg_mask.astype(np.float32)/255.0
+        seg_mask = seg_mask[None].transpose(0,3,1,2)
+        seg_mask = torch.from_numpy(seg_mask)
+
+        batch = {"image": image, "mask": mask, "masked_image": masked_image, "hint": seg_mask}
 
         for k in batch:
             batch[k] = batch[k]*2.0-1.0
@@ -85,14 +97,14 @@ class InpaintingBaseInteriornet(Dataset):
                 
         example2 = dict((k, self.labels[k][i]) for k in self.labels)
 
-        add_dict = self._transform_and_normalize_inference(example2["file_path_"],example2["file_path_mask_"], resize_to=self.size)
+        add_dict = self._transform_and_normalize_inference(example2["file_path_"],example2["file_path_mask_"],example2["file_path_segmask_"], resize_to=self.size)
         
         example2.update(add_dict)
 
         return example2
 
 
-class InpaintingBaseInteriornetTrain(InpaintingBaseInteriornet):
+class InpaintingBaseInteriornetSegmentationTrain(InpaintingBaseInteriornetSegmentation):
     def __init__(self, csv_file, data_root, **kwargs):
         super().__init__(csv_file=csv_file, partition="train",data_root=data_root,**kwargs)
         self.transform = transforms.Compose([
@@ -106,9 +118,7 @@ class InpaintingBaseInteriornetTrain(InpaintingBaseInteriornet):
         ])
 
 
-
-
-class InpaintingBaseInteriornetValidation(InpaintingBaseInteriornet):
+class InpaintingBaseInteriornetSegmentationValidation(InpaintingBaseInteriornetSegmentation):
     def __init__(self, csv_file,data_root, **kwargs):
         super().__init__(csv_file=csv_file, partition="validation", data_root=data_root, **kwargs)
         self.transform = transforms.Compose([
@@ -135,14 +145,14 @@ if __name__=="__main__":
                                                      std = [ 1/255]),
                     ])
 
-    csv_file = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/open_source_samples/dataframe_interiornet.csv"
+    csv_file = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/open_source_samples/dataframe_interiornet_segmentation.csv"
     data_root = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/open_source_samples/"
-    ip_train = InpaintingBaseInteriornetTrain(size = 256,csv_file=csv_file, data_root=data_root)
+    ip_train = InpaintingBaseInteriornetSegmentationTrain(size = 256,csv_file=csv_file, data_root=data_root)
     ip_train_loader = DataLoader(ip_train, batch_size=1, num_workers=4,
                           pin_memory=True, shuffle=True)
 
     for idx, batch in enumerate(ip_train_loader):
-        im_keys = ['image', 'masked_image', 'mask']
+        im_keys = ['image', 'masked_image', 'mask', "hint"]
         for k in im_keys:
             # print(batch[k].shape)               
             image_de = batch[k]
@@ -157,6 +167,6 @@ if __name__=="__main__":
             # print(rgb_img.shape)
             img = transforms.ToPILImage()(rgb_img)  
             # print(img.size)
-            img.save("ldm/data/test_loader_inpaint/%s_test.jpg" % k)
+            img.save("ldm/data/test_loader_inpaint_segmentation/%s_test.jpg" % k)
 
         break

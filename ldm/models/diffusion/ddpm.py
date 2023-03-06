@@ -1400,30 +1400,6 @@ class LatentDiffusion(DDPM):
                 return {key: log[key] for key in return_keys}
         return log
 
-    # def configure_optimizers(self):
-    #     lr = self.learning_rate
-    #     params = list(self.model.parameters())
-    #     if self.cond_stage_trainable:
-    #         print(f"{self.__class__.__name__}: Also optimizing conditioner params!")
-    #         params = params + list(self.cond_stage_model.parameters())
-    #     if self.learn_logvar:
-    #         print('Diffusion model optimizing logvar')
-    #         params.append(self.logvar)
-    #     opt = torch.optim.AdamW(params, lr=lr)
-    #     if self.use_scheduler:
-    #         assert 'target' in self.scheduler_config
-    #         scheduler = instantiate_from_config(self.scheduler_config)
-
-    #         print("Setting up LambdaLR scheduler...")
-    #         scheduler = [
-    #             {
-    #                 'scheduler': LambdaLR(opt, lr_lambda=scheduler.schedule),
-    #                 'interval': 'step',
-    #                 'frequency': 1
-    #             }]
-    #         return [opt], scheduler
-    #     return opt
-
     @torch.no_grad()
     def to_rgb(self, x):
         x = x.float()

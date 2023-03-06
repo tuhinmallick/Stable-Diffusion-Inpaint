@@ -12,6 +12,10 @@ python scripts/inpaint_runaway_correct.py --indir "data/INPAINTING/inpainting_ex
 
 python scripts/inpaint_runaway_correct.py --indir "data/samples/interiornet_test/" --outdir "data/samples/interiornet_output/" --ckpt "logs/2023-02-08_custom_interionet_FULL_TRAINING_fixed_LR/checkpoints/last.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_inference.yaml" --device cuda:0 --prefix "interiornet"
 
+
+python scripts/inpaint_runaway_correct.py --indir "data/samples/interiornet_test_artificial/" --outdir "data/samples/interiornet_output/artificial/" --ckpt "logs/2023-02-08_custom_interionet_FULL_TRAINING_LAMA/checkpoints/epoch=000021.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_inference.yaml" --device cuda:0 --prefix "interiornet_artificial"
+
+
 ### Validation set
 
 python scripts/inpaint_runaway_correct_from_csv.py --csv_file "data/open_source_samples/dataframe_filtered_test.csv" --outdir "data/samples/interiornet_output/validation/" --ckpt "models/ldm/inpainting_big/model_compvis.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_inference.yaml" --device cuda:0 --prefix "interiornet_validation_compvis"
@@ -27,6 +31,9 @@ python scripts/inpaint_runaway_correct_from_csv.py --csv_file "data/open_source_
 python scripts/inpaint_runaway_average.py --csv_file "data/open_source_samples/dataframe_filtered_test.csv" --outdir "data/samples/interiornet_output/validation_average/" --ckpt "models/ldm/inpainting_big/model_compvis.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_inference.yaml" --device cuda:0 --prefix "interiornet_validation_compvis"
 
 
+### INTERPOLATED Validation set
+
+python scripts/inpaint_runaway_average_interpolation.py --csv_file "data/open_source_samples/dataframe_filtered_test.csv" --outdir "data/samples/interiornet_output/validation_interpolation/" --ckpt "models/ldm/inpainting_big/model_compvis.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_inference.yaml" --device cuda:0 --prefix "interiornet_validation_compvis"
 
 
 ## KEYBOARD NOT EMA VS EMA

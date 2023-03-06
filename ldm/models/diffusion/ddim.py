@@ -92,6 +92,7 @@ class DDIMSampler(object):
                     print(f"Warning: Got {conditioning.shape[0]} conditionings but batch-size is {batch_size}")
 
         self.make_schedule(ddim_num_steps=S, ddim_eta=eta, verbose=verbose)
+        
         # sampling
         C, H, W = shape
         size = (batch_size, C, H, W)

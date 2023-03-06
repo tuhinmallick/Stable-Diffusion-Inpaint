@@ -24,11 +24,8 @@ model:
     monitor: val/loss
     #monitor: val/loss_simple_ema
     # scale_factor: 0.18215 # piano piano la impara se riscaliamo così
-    ckpt_path: "models/ldm/inpainting_big/model_compvis.ckpt"
-    finetune_keys_to_retain: null
-    finetune_training_keys: [model.diffusion_model.input_blocks.0.0.weight,
-                              model_ema.diffusion_modelinput_blocks00weight
-                              ]
+    ckpt_path: "models/ldm/ControlNet/model_cn.ckpt"
+   
     only_mid_control: False
 
 
@@ -120,15 +117,15 @@ data:
     num_workers: 4
     wrap: false
     train:
-      target: ldm.data.inpainting_interiornet.InpaintingBaseInteriornetTrain
+      target: ldm.data.inpainting_interiornet_segmentation.InpaintingBaseInteriornetSegmentationTrain
       params:
-        csv_file: data/open_source_samples/dataframe_interiornet.csv
+        csv_file: data/open_source_samples/dataframe_interiornet_segmentation.csv
         data_root: data/open_source_samples/
         size: 512
     validation:
-      target: ldm.data.inpainting_interiornet.InpaintingBaseInteriornetValidation
+      target: ldm.data.inpainting_interiornet_segmentation.InpaintingBaseInteriornetSegmentationValidation
       params:
-        csv_file: data/open_source_samples/dataframe_interiornet.csv
+        csv_file: data/open_source_samples/dataframe_interiornet_segmentation.csv
         data_root: data/open_source_samples/
         size: 512
 
