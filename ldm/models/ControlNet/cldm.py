@@ -18,7 +18,7 @@ from ldm.models.diffusion.ddpm import LatentDiffusion,LatentInpaintDiffusion
 from ldm.util import log_txt_as_img, exists, instantiate_from_config
 from ldm.models.diffusion.ddim import DDIMSampler
 from torch.optim.lr_scheduler import LambdaLR
-
+import contextlib
 
 class ControlledUnetModel(UNetModel):
     def forward(self, x, timesteps=None, context=None, control=None, only_mid_control=False, **kwargs):
@@ -147,12 +147,26 @@ class ControlNet(nn.Module):
         )
         self.zero_convs = nn.ModuleList([self.make_zero_conv(model_channels)])
 
+        # self.input_hint_block = TimestepEmbedSequential(
+        #     conv_nd(dims, hint_channels, 16, 3, padding=1),
+        #     nn.SiLU(),
+        #     conv_nd(dims, 16, 16, 3, padding=1),
+        #     nn.SiLU(),
+        #     conv_nd(dims, 16, 32, 3, padding=1, stride=2),
+        #     nn.SiLU(),
+        #     conv_nd(dims, 32, 32, 3, padding=1),
+        #     nn.SiLU(),
+        #     conv_nd(dims, 32, 96, 3, padding=1, stride=2),
+        #     nn.SiLU(),
+        #     conv_nd(dims, 96, 96, 3, padding=1),
+        #     nn.SiLU(),
+        #     conv_nd(dims, 96, 256, 3, padding=1, stride=2),
+        #     nn.SiLU(),
+        #     zero_module(conv_nd(dims, 256, model_channels, 3, padding=1))
+        # )
+        
         self.input_hint_block = TimestepEmbedSequential(
-            conv_nd(dims, hint_channels, 16, 3, padding=1),
-            nn.SiLU(),
-            conv_nd(dims, 16, 16, 3, padding=1),
-            nn.SiLU(),
-            conv_nd(dims, 16, 32, 3, padding=1, stride=2),
+            conv_nd(dims, hint_channels, 32, 3, padding=1),
             nn.SiLU(),
             conv_nd(dims, 32, 32, 3, padding=1),
             nn.SiLU(),
@@ -164,6 +178,24 @@ class ControlNet(nn.Module):
             nn.SiLU(),
             zero_module(conv_nd(dims, 256, model_channels, 3, padding=1))
         )
+        
+        # self.input_hint_block = TimestepEmbedSequential(
+        #     conv_nd(dims, hint_channels, 16, 3, padding=1),
+        #     nn.SiLU(),
+        #     conv_nd(dims, 16, 16, 3, padding=1),
+        #     nn.SiLU(),
+        #     conv_nd(dims, 16, 32, 3, padding=1),
+        #     nn.SiLU(),
+        #     conv_nd(dims, 32, 32, 3, padding=1),
+        #     nn.SiLU(),
+        #     conv_nd(dims, 32, 96, 3, padding=1),
+        #     nn.SiLU(),
+        #     conv_nd(dims, 96, 96, 3, padding=1),
+        #     nn.SiLU(),
+        #     conv_nd(dims, 96, 256, 3, padding=1),
+        #     nn.SiLU(),
+        #     zero_module(conv_nd(dims, 256, model_channels, 3, padding=1))
+        # )
 
         self._feature_size = model_channels
         input_block_chans = [model_channels]
@@ -310,29 +342,71 @@ class ControlNet(nn.Module):
 
 class ControlLDMInPaintConcat(LatentDiffusion):
 
-    def __init__(self, control_stage_config, control_key,ckpt_path, only_mid_control, *args, **kwargs):
+    def __init__(self, control_stage_config, control_key,ckpt_path, only_mid_control, sd_locked, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.control_model = instantiate_from_config(control_stage_config)
         self.control_key = control_key
+        self.sd_locked = sd_locked
         self.only_mid_control = only_mid_control
         self.control_scales = [1.0] * 13
         self.concat_keys =("masked_image","mask")
+        self.masked_image_key="masked_image"
         ignore_keys = kwargs.pop("ignore_keys", list())
+        self.c_concat_log_start=0 # to log reconstruction of c_concat codes, first three channels in our case
+        self.c_concat_log_end=3
         if exists(ckpt_path): self.init_from_ckpt(ckpt_path, ignore_keys)
 
     @torch.no_grad()
-    def get_input(self, batch, k, bs=None, *args, **kwargs):
+    def get_input(self, batch, k, bs=None, return_first_stage_outputs=False, *args, **kwargs):
         # x, c = super().get_input(batch, self.first_stage_key, *args, **kwargs)
         z, c, x, xrec, xc = super().get_input(batch, self.first_stage_key, return_first_stage_outputs=True,
                                     force_c_encode=True, return_original_cond=True, bs=bs)
         
+        assert exists(self.concat_keys)
+        c_cat = list()
+        
+        # THE ORDER of self.concat_keys MUST BE AS IN INFERENCE
+        for ck in self.concat_keys:
+            # TODO: ATTENZIONE TOLTO REARRANGE
+            #cc = rearrange(batch[ck], 'b h w c -> b c h w').to(memory_format=torch.contiguous_format).float()
+            cc = batch[ck].to(memory_format=torch.contiguous_format).float()
+            if bs is not None:
+                cc = cc[:bs]
+                cc = cc.to(self.device)
+            bchw = z.shape
+            if ck != self.masked_image_key:
+                cc = torch.nn.functional.interpolate(cc, size=bchw[-2:])
+            else:
+                cc = self.get_first_stage_encoding(self.encode_first_stage(cc))
+            c_cat.append(cc)
+        c_cat = torch.cat(c_cat, dim=1)
+        
+        # NO CROSS ATTENTION
+        all_concat = c_cat
+        
+        # GET CONTROL
+        
         control = batch[self.control_key]
+        
         if bs is not None:
             control = control[:bs]
+        
+        # # interpolate segmentation mask to latent space dimension
+        # bchw = z.shape
+        # control = torch.nn.functional.interpolate(control, size=bchw[-2:])
+            
         control = control.to(self.device)
-        control = einops.rearrange(control, 'b h w c -> b c h w')
-        control = control.to(memory_format=torch.contiguous_format).float()
-        return x, dict(c_crossattn=[c], c_concat=[control])
+        # control = einops.rearrange(control, 'b h w c -> b c h w')
+        # control = control.to(memory_format=torch.contiguous_format).float()
+        
+        # control = torch.cat(control, dim=1)
+        
+        dict_cond = dict(control=control, c_concat=all_concat)
+        
+        if return_first_stage_outputs:
+            return z, dict_cond, x, xrec, xc
+        return z, dict_cond
+    
 
     def apply_model(self, x_noisy, t, cond, *args, **kwargs):
         assert isinstance(cond, dict)
@@ -340,26 +414,37 @@ class ControlLDMInPaintConcat(LatentDiffusion):
 
         # Togli tutti cond txt da qua
         cond_txt = None
+        key = 'c_concat' if self.model.conditioning_key == 'concat' else 'c_crossattn'
+        x_noisy_c = torch.cat([x_noisy] + [cond[key]], dim=1)
+
         # cond_txt = torch.cat(cond['c_crossattn'], 1)
-        control = self.control_model(x=x_noisy, hint=torch.cat(cond['c_concat'], 1), timesteps=t, context=cond_txt)
+        control = self.control_model(x=x_noisy_c, hint=cond['control'], timesteps=t, context=cond_txt)
         control = [c * scale for c, scale in zip(control, self.control_scales)]
-        eps = diffusion_model(x=x_noisy, timesteps=t, context=cond_txt, control=control, only_mid_control=self.only_mid_control)
        
+        eps = diffusion_model(x=x_noisy_c, timesteps=t, context=cond_txt, control=control, only_mid_control=self.only_mid_control)
         return eps
 
     @torch.no_grad()
-    def log_images(self, batch, N=4, n_row=2, sample=False, ddim_steps=50, ddim_eta=0.0,plot_denoise_rows=False, 
-                   plot_diffusion_rows=False, unconditional_guidance_scale=9.0                   **kwargs):
+    def log_images(self, batch, N=4, n_row=2, sample=True, ddim_steps=50, ddim_eta=0.0,plot_denoise_rows=False, 
+                   plot_diffusion_rows=True, **kwargs):
+        
+        ema_scope = contextlib.suppress
         use_ddim = ddim_steps is not None
 
         log = dict()
-        z, c = self.get_input(batch, self.first_stage_key, bs=N)
-        c_cat, c = c["c_concat"][0][:N], c["c_crossattn"][0][:N]
+        z, c, x, xrec, xc = self.get_input(batch, self.first_stage_key, bs=N, return_first_stage_outputs=True)
+        # TODO: BUG HERE, CONCAT IS NOT CORRECT
+        c_cat, c_control = c["c_concat"][:N], c["control"][:N]
         N = min(z.shape[0], N)
         n_row = min(z.shape[0], n_row)
+        
+        log["inputs"] = x
         log["reconstruction"] = self.decode_first_stage(z)
-        log["control"] = c_cat * 2.0 - 1.0
-        log["conditioning"] = log_txt_as_img((512, 512), batch[self.cond_stage_key], size=16)
+        log["control"] = c_control# (c_control + 1)/2
+
+        if not (self.c_concat_log_start is None and self.c_concat_log_end is None):
+            log["c_concat_decoded"] = self.decode_first_stage(c_cat[:,self.c_concat_log_start:self.c_concat_log_end])
+
 
         if plot_diffusion_rows:
             # get diffusion row
@@ -380,12 +465,14 @@ class ControlLDMInPaintConcat(LatentDiffusion):
             log["diffusion_row"] = diffusion_grid
 
         if sample:
-            # get denoise row
-            samples, z_denoise_row = self.sample_log(cond={"c_concat": [c_cat], "c_crossattn": [c]},
+            # get denoise row                            
+            # TODO: BUG HERE
+            samples, z_denoise_row = self.sample_log(cond=c,
                                                      batch_size=N, ddim=use_ddim,
                                                      ddim_steps=ddim_steps, eta=ddim_eta)
             x_samples = self.decode_first_stage(samples)
             log["samples"] = x_samples
+            
             if plot_denoise_rows:
                 denoise_grid = self._get_denoise_row_from_list(z_denoise_row)
                 log["denoise_row"] = denoise_grid
@@ -393,7 +480,22 @@ class ControlLDMInPaintConcat(LatentDiffusion):
         return log
 
 
+    @torch.no_grad()
+    def sample_log(self, cond, batch_size, ddim_steps, **kwargs):
+        ddim_sampler = DDIMSampler(self)
+        # b, c, h, w = cond.shape
+        # shape = (self.channels, h // 8, w // 8)
+        shape = (self.channels, self.image_size, self.image_size)
+        samples, intermediates = ddim_sampler.sample(ddim_steps, batch_size, shape, cond, verbose=False, **kwargs)
+        return samples, intermediates
+
+
     def configure_optimizers(self):
+        # DO NOT REMOVE GRADIENT, FOLLOWING THE ORIGINAL IMPLEMENTATION Remove gradients from all the classical model params
+        # if self.sd_locked:
+        #     # self.model.diffusion_model.train(False)
+        #     for name, para in self.model.diffusion_model.named_parameters():
+        #         para.requires_grad = False
         lr = self.learning_rate
         params = list(self.control_model.parameters())
         if not self.sd_locked:
@@ -415,7 +517,6 @@ class ControlLDMInPaintConcat(LatentDiffusion):
             return [opt], scheduler
         return opt
     
-
     def low_vram_shift(self, is_diffusing):
         if is_diffusing:
             self.model = self.model.cuda()

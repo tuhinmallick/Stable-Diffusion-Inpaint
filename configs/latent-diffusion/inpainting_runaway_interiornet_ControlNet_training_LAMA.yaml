@@ -110,13 +110,13 @@ data:
     train:
       target: ldm.data.inpainting_interiornet_segmentation.InpaintingBaseInteriornetSegmentationTrain
       params:
-        csv_file: data/open_source_samples/dataframe_interiornet_segmentation.csv
+        csv_file: data/open_source_samples/dataframe_interiornet_lama_seg.csv
         data_root: data/open_source_samples/
         size: 512
     validation:
       target: ldm.data.inpainting_interiornet_segmentation.InpaintingBaseInteriornetSegmentationValidation
       params:
-        csv_file: data/open_source_samples/dataframe_interiornet_segmentation.csv
+        csv_file: data/open_source_samples/dataframe_interiornet_lama_seg.csv
         data_root: data/open_source_samples/
         size: 512
 

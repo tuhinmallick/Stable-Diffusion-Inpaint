@@ -350,7 +350,7 @@ class DDPM(pl.LightningModule):
         return loss, loss_dict
 
     def training_step(self, batch, batch_idx):
-        print("ACTUAL LEARNING RATE %s" % self.optimizers().param_groups[0]['lr'])
+        # print("ACTUAL LEARNING RATE %s" % self.optimizers().param_groups[0]['lr'])
 
         loss, loss_dict = self.shared_step(batch)
 

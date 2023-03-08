@@ -166,12 +166,11 @@ You could also customize the layers you want to freeze. In this case, remove the
 ## TODO
 
 - [ ] Describe and produce high-quality reference scripts
-- [ ] Fine-tuning script
+- [x] Fine-tuning script
 - [x] General dataloader
-- [ ] Integrate [ControlNet mechanism](https://github.com/lllyasviel/ControlNet#guess-anchor)
-- [] Use weights of text-conditioned inpainting for inpainting only, by filtering out, only the weights of the U-net so you could also use the VAE.
-- [] Use [ConvLSTM](https://github.com/ndrplz/ConvLSTM_pytorch/tree/master) for spatio-temporal coherency into the residual blocks probably (https://arxiv.org/pdf/2101.12072.pdf).
-- [] Try to sample an interpolation point of different views and use that to influence the generation;
+- [x] Integrate [ControlNet mechanism](https://github.com/lllyasviel/ControlNet#guess-anchor)
+- [ ] Use [ConvLSTM](https://github.com/ndrplz/ConvLSTM_pytorch/tree/master) for spatio-temporal coherency into the residual blocks probably (https://arxiv.org/pdf/2101.12072.pdf).
+- [ ] Use weights of text-conditioned inpainting for inpainting only, by filtering out, only the weights of the U-net so you could also use the VAE.
 
 ## Learning rate evaluations
 

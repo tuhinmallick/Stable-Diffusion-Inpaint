@@ -11,7 +11,7 @@ model:
     loss_type: l1
     first_stage_key: image
     cond_stage_key: masked_image # 4 channels
-    control_key: "hint"
+    control_key: hint
     cond_stage_trainable: false 
     # do not use ema
     use_ema: false
@@ -25,11 +25,9 @@ model:
     #monitor: val/loss_simple_ema
     # scale_factor: 0.18215 # piano piano la impara se riscaliamo così
     ckpt_path: "models/ldm/inpainting_big/model_compvis.ckpt"
-    finetune_keys_to_retain: null
-    finetune_training_keys: [model.diffusion_model.input_blocks.0.0.weight,
-                              model_ema.diffusion_modelinput_blocks00weight
-                              ]
+   
     only_mid_control: False
+    sd_locked: True
 
 
     scheduler_config: # 10000 warmup steps
@@ -67,7 +65,7 @@ model:
         # legacy: False
 
     unet_config:
-      target: ldm.models.ControlNet.cldm.UNetModel
+      target: ldm.models.ControlNet.cldm.ControlledUnetModel
       params:
         image_size: 64 # unused
         in_channels: 7 # image, masked image, mask
@@ -120,15 +118,15 @@ data:
     num_workers: 4
     wrap: false
     train:
-      target: ldm.data.inpainting_interiornet.InpaintingBaseInteriornetTrain
+      target: ldm.data.inpainting_interiornet_segmentation.InpaintingBaseInteriornetSegmentationTrain
       params:
-        csv_file: data/open_source_samples/dataframe_interiornet.csv
+        csv_file: data/open_source_samples/dataframe_interiornet_segmentation.csv
         data_root: data/open_source_samples/
         size: 512
     validation:
-      target: ldm.data.inpainting_interiornet.InpaintingBaseInteriornetValidation
+      target: ldm.data.inpainting_interiornet_segmentation.InpaintingBaseInteriornetSegmentationValidation
       params:
-        csv_file: data/open_source_samples/dataframe_interiornet.csv
+        csv_file: data/open_source_samples/dataframe_interiornet_segmentation.csv
         data_root: data/open_source_samples/
         size: 512
 

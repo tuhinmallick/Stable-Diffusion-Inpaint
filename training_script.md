@@ -35,3 +35,11 @@ python3 main_inpainting.py --train --name  custom_interionet_FULL_TRAINING_test_
 ############ interionet LAMA ############
 
 python3 main_inpainting.py --train --name  custom_interionet_FULL_TRAINING_LAMA --base  configs/latent-diffusion/inpainting_runaway_interiornet_LAMA_LR_LOWER.yaml  --gpus 1,   --seed  42
+
+
+############## CONTROLNET INTERIORNET #######################
+
+python3 main_inpainting.py  --train  --name  custom_keyboard_training_CONTROLNET --base  configs/latent-diffusion/inpainting_runaway_interiornet_ControlNet_training.yaml   --gpus  0,   --seed  42
+
+
+python3 main_inpainting.py  --train  --name  custom_keyboard_training_CONTROLNET_LAMA --base  configs/latent-diffusion/inpainting_runaway_interiornet_ControlNet_training_LAMA.yaml   --gpus  0,   --seed  42

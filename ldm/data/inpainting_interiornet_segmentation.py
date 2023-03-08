@@ -78,7 +78,8 @@ class InpaintingBaseInteriornetSegmentation(Dataset):
         ## SEGMENTATION MASK
         seg_mask = np.array(Image.open(seg_mask_path).convert("RGB"))
 
-        seg_mask = cv2.resize(seg_mask, (resize_to, resize_to), interpolation=cv2.INTER_NEAREST)
+        if seg_mask.shape[0]!=resize_to or seg_mask.shape[1]!=resize_to:
+            seg_mask = cv2.resize(seg_mask, (resize_to, resize_to), interpolation=cv2.INTER_NEAREST)
         seg_mask = seg_mask.astype(np.float32)/255.0
         seg_mask = seg_mask[None].transpose(0,3,1,2)
         seg_mask = torch.from_numpy(seg_mask)
