@@ -1,16 +1,44 @@
 # IN INPAITING FOLDER
 wget -O models/ldm/inpainting_big/model.ckpt https://ommer-lab.com/files/latent-diffusion/inpainting_big.zip --no-check-certificate
 
+## DYNAFILL
+python scripts/inpaint_ControlNet_csv.py --csv_file "data/open_source_samples/dynafill/subset/full_to_target.csv" --image_dir "data/open_source_samples/dynafill/subset/" --outdir "data/samples/DYNAFILL/" --ckpt "logs/2023-02-08_custom_keyboard_training_CONTROLNET_DYNAFILL/checkpoints/epoch=000077.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_interiornet_ControlNet_Inference.yaml" --device cuda:1 --prefix "DYNAFILL_CN_1"
 
-## PLACES NOT EMA VS EMA
+python scripts/inpaint_ControlNet_csv.py --csv_file "data/open_source_samples/dynafill/subset/full_to_target.csv" --image_dir "data/open_source_samples/dynafill/subset/" --outdir "data/samples/DYNAFILL_CORRECT/" --ckpt "logs/2023-02-08_custom_keyboard_training_CONTROLNET_DYNAFILL_CORRECT/checkpoints/epoch=000077.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_interiornet_ControlNet_Inference.yaml" --device cuda:1 --prefix "DYNAFILL_CN"
 
-python scripts/inpaint_runaway_correct.py --indir "data/INPAINTING/inpainting_examples/" --outdir "data/INPAINTING/output_images_debug/" --ckpt "logs/2023-02-08_custom_place_training_different_samplerSAMESEEDNOTEMA3/checkpoints/epoch=000685.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_inference.yaml" --device cuda:0 --prefix "PLACES_OVERFIT"
 
-python scripts/inpaint_runaway_correct.py --indir "data/INPAINTING/inpainting_examples/" --outdir "data/INPAINTING/output_images_debug/" --ckpt "logs/2023-02-08_custom_place_training_different_samplerSAMESEEDNOTEMA3/checkpoints/epoch=000685.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_inference.yaml" --device cuda:0 --ema --prefix "PLACES_OVERFIT"
+python scripts/inpaint_ControlNet_csv.py --csv_file "data/open_source_samples/dynafill/subset/full_to_target.csv" --image_dir "data/open_source_samples/dynafill/subset/" --outdir "data/samples/DYNAFILL_CORRECT/" --ckpt "logs/2023-02-08_custom_keyboard_training_CONTROLNET_DYNAFILL_CORRECT_FULL/checkpoints/xxxxx" --yaml_profile "configs/latent-diffusion/inpainting_runaway_interiornet_ControlNet_Inference.yaml" --device cuda:1 --prefix "DYNAFILL_CN"
+
+
+
+
+python scripts/inpaint_ControlNet_csv.py --csv_file "data/modules/DYNAFILL/full_to_target.csv" --image_dir "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/Datasets/DynaFill/" --outdir "data/samples/DYNAFILL_REAL_VALIDATION/" --ckpt "logs/2023-02-08_custom_keyboard_training_CONTROLNET_DYNAFILL_CORRECT/checkpoints/epoch=000077.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_interiornet_ControlNet_Inference.yaml" --device cuda:1 --prefix "DYNAFILL_CN"
+
+
+
+
+
+
+python scripts/inpaint_ControlNet.py --indir "data/samples/Car_custom" --outdir "data/samples/DYNAFILL_CORRECT_CUSTOM/" --ckpt "logs/2023-02-08_custom_keyboard_training_CONTROLNET_DYNAFILL_CORRECT/checkpoints/epoch=000077.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_interiornet_ControlNet_Inference.yaml" --device cuda:1 --prefix "DYNAFILL_CN"
+
+
+
+
 
 ## INTERIORNET
 
-python scripts/inpaint_runaway_correct.py --indir "data/samples/interiornet_test/" --outdir "data/samples/interiornet_output/" --ckpt "logs/2023-02-08_custom_interionet_FULL_TRAINING_fixed_LR/checkpoints/last.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_inference.yaml" --device cuda:0 --prefix "interiornet"
+python scripts/inpaint_runaway_correct.py --indir "data/samples/interiornet_test/" --outdir "data/samples/interiornet_output/SD/" --ckpt "models/ldm/inpainting_big/model_compvis.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_inference.yaml" --device cuda:1 --prefix "interiornet_SD"
+
+
+python scripts/inpaint_ControlNet.py --indir "data/samples/interiornet_test/" --outdir "data/samples/interiornet_output/CN/" --ckpt "logs/2023-02-08_custom_keyboard_training_CONTROLNET_LAMA/checkpoints/epoch=000002.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_interiornet_ControlNet_Inference.yaml" --device cuda:1 --prefix "interiornet_CN_1"
+
+
+python scripts/inpaint_runaway_correct.py --indir "data/samples/interiornet_test/" --outdir "data/samples/interiornet_output/LAMA/" --ckpt "logs/2023-02-08_custom_interionet_FULL_TRAINING_LAMA/checkpoints/epoch=000021.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_inference.yaml" --device cuda:0 --prefix "interiornet_validation_lama"
+
+
+
+python scripts/inpaint_runaway_correct_from_csv.py --csv_file "data/open_source_samples/dataframe_interiornet_lama_validation.csv" --outdir "data/samples/interiornet_output/validation_lama/" --ckpt "logs/2023-02-08_custom_interionet_FULL_TRAINING_LAMA/checkpoints/epoch=000021.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_inference.yaml" --device cuda:0 --prefix "interiornet_validation_lama"
+
 
 
 python scripts/inpaint_runaway_correct.py --indir "data/samples/interiornet_test_artificial/" --outdir "data/samples/interiornet_output/artificial/" --ckpt "logs/2023-02-08_custom_interionet_FULL_TRAINING_LAMA/checkpoints/epoch=000021.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_inference.yaml" --device cuda:0 --prefix "interiornet_artificial"

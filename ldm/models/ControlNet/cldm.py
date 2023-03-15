@@ -15,7 +15,7 @@ from torchvision.utils import make_grid
 from ldm.modules.attention import SpatialTransformer
 from ldm.modules.diffusionmodules.openaimodel import UNetModel, TimestepEmbedSequential, ResBlock, Downsample, AttentionBlock
 from ldm.models.diffusion.ddpm import LatentDiffusion,LatentInpaintDiffusion
-from ldm.util import log_txt_as_img, exists, instantiate_from_config
+from ldm.util import log_txt_as_img, exists, instantiate_from_config, default
 from ldm.models.diffusion.ddim import DDIMSampler
 from torch.optim.lr_scheduler import LambdaLR
 import contextlib
@@ -407,7 +407,6 @@ class ControlLDMInPaintConcat(LatentDiffusion):
             return z, dict_cond, x, xrec, xc
         return z, dict_cond
     
-
     def apply_model(self, x_noisy, t, cond, *args, **kwargs):
         assert isinstance(cond, dict)
         diffusion_model = self.model.diffusion_model

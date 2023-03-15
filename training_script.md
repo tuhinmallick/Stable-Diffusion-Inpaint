@@ -43,3 +43,20 @@ python3 main_inpainting.py  --train  --name  custom_keyboard_training_CONTROLNET
 
 
 python3 main_inpainting.py  --train  --name  custom_keyboard_training_CONTROLNET_LAMA --base  configs/latent-diffusion/inpainting_runaway_interiornet_ControlNet_training_LAMA.yaml   --gpus  0,   --seed  42
+
+
+############## CONTROLNET DYNAFILL #######################
+
+python3 main_inpainting.py  --train  --name  custom_keyboard_training_CONTROLNET_DYNAFILL --base  configs/latent-diffusion/inpainting_runaway_interiornet_ControlNet_training_DYNAFILL.yaml   --gpus  1,   --seed  42
+
+
+python3 main_inpainting.py  --train  --name  custom_keyboard_training_CONTROLNET_DYNAFILL_CORRECT --base  configs/latent-diffusion/inpainting_runaway_interiornet_ControlNet_training_DYNAFILL_CORRECT.yaml   --gpus  1,   --seed  42
+
+
+############## CONTROLNET DYNAFILL FULL #######################
+python3 main_inpainting.py  --train  --name  custom_keyboard_training_CONTROLNET_DYNAFILL_CORRECT_FULL --base  configs/latent-diffusion/inpainting_runaway_interiornet_ControlNet_training_DYNAFILL_CORRECT_FULL_DATASET.yaml   --gpus  1,   --seed  42
+
+
+
+############## CLASSICAL WITH SEGMENTATION CHANNELS DYNAFILL FULL #######################
+python3 main_inpainting.py  --train  --name SEG_DYNAFILL_FULL --base  configs/latent-diffusion/inpainting_runaway_DYNAFILL_SEG_INPAINT.yaml   --gpus  0,   --seed  42

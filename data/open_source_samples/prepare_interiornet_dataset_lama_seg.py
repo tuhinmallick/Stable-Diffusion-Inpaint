@@ -34,7 +34,7 @@ for folder in glob.glob(modality_dir + "masked_views_*"):
 
     # sampling validation rate
     val_samples = int(round(len(masked_images)*validation_percentage))
-    print("train samples %s Val samples %s" %(len(masked_images)-val_samples,val_samples))
+    print("train mask id samples %s Val mask id samples %s" %(len(masked_images)-val_samples,val_samples))
     sampl_validation_rate = len(masked_images)//val_samples
     how_many_val = 1
     prefix_to_remove = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/open_source_samples/"

@@ -10,7 +10,7 @@ sys.path.insert(
 from main_inpainting import instantiate_from_config
 from ldm.models.diffusion.ddim import DDIMSampler
 from inpaint_utils import seed_everything
-from inpaint_utils import make_batch
+from inpaint_utils import make_batch,plot_row_original_mask_output
 from contextlib import suppress
 seed_everything(42)
 
@@ -146,6 +146,10 @@ if __name__ == "__main__":
                                     min=0.0, max=1.0)
                 mask = torch.clamp((batch["mask"]+1.0)/2.0,
                                     min=0.0, max=1.0)
+                
+                masked_image = torch.clamp((batch["masked_image"]+1.0)/2.0,
+                                    min=0.0, max=1.0)
+                
                 predicted_image = torch.clamp((x_samples_ddim+1.0)/2.0,
                                                 min=0.0, max=1.0)
 
@@ -158,4 +162,10 @@ if __name__ == "__main__":
                 
                 predicted_image = predicted_image.cpu().numpy().transpose(0,2,3,1)[0]*255
                 print("Save in %s" % outpath)
-                Image.fromarray(predicted_image.astype(np.uint8)).save(outpath)
+                
+                mask = mask.cpu().numpy().transpose(0,2,3,1)[0]*255
+                image = image.cpu().numpy().transpose(0,2,3,1)[0]*255
+                masked_image = masked_image.cpu().numpy().transpose(0,2,3,1)[0]*255
+                
+                image_to_print = plot_row_original_mask_output([{"masked_image":masked_image, "image":image, "predicted_image":predicted_image}], image_size = 512)
+                Image.fromarray(image_to_print.astype(np.uint8)).save(outpath)

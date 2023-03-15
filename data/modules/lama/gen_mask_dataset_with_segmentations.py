@@ -128,7 +128,7 @@ def main(args):
         in_files_n = len(in_files)
         chunk_size = in_files_n // args.n_jobs + (1 if in_files_n % args.n_jobs > 0 else 0)
         Parallel(n_jobs=args.n_jobs)(
-            delayed(process_images)(in_files[start:start+chunk_size], inseg_files[start:start+chunk_size], args.indir, args.seg_postfix, args.outdir, config)
+            delayed(process_images)(in_files[start:start+chunk_size], inseg_files[start:start+chunk_size], args.indir, args.outdir, config)
             for start in range(0, len(in_files), chunk_size)
         )
 

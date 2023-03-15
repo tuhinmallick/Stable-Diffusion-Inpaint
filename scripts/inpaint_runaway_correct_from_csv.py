@@ -1,7 +1,6 @@
 import argparse, os, sys, glob
 from omegaconf import OmegaConf
 from PIL import Image
-from tqdm import tqdm
 import numpy as np
 import torch
 import pandas as pd
@@ -13,7 +12,7 @@ from ldm.models.diffusion.ddim import DDIMSampler
 from inpaint_utils import seed_everything, make_batch, plot_row_original_mask_output
 from contextlib import suppress
 from torchmetrics.image.lpip_similarity import LPIPS
-import cv2
+import cv2, tqdm
 seed_everything(42)
 
 
@@ -126,7 +125,7 @@ if __name__ == "__main__":
 
     with torch.no_grad():
         with scope("Sampling"):
-            for image_path, mask_path in tqdm(zip(images, masks)):
+            for image_path, mask_path in tqdm.tqdm(zip(images, masks), total = len(masks), desc="Producing images triplets"):
                 
                 batch = make_batch(image_path, mask_path, device=device, resize_to=512)
                 
@@ -179,5 +178,5 @@ if __name__ == "__main__":
                 image = image.cpu().numpy().transpose(0,2,3,1)[0]*255
                 masked_image = masked_image.cpu().numpy().transpose(0,2,3,1)[0]*255
                 
-                image_to_print = plot_row_original_mask_output([{"masked_image":masked_image, "image":image, "predicted_image":inpainted}], image_size = 512)
+                image_to_print = plot_row_original_mask_output([{"masked_image":masked_image, "image":image, "predicted_image":predicted_image}], image_size = 512)
                 Image.fromarray(image_to_print.astype(np.uint8)).save(outpath)

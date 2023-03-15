@@ -54,6 +54,47 @@ def make_batch(image, mask, device="cuda:0", resize_to = None, mask_inverted=Fal
     return batch
 
 
+def make_batch_seg(image, mask, seg_mask_path, device="cuda:0", resize_to = None, mask_inverted=False):
+    image = np.array(Image.open(image).convert("RGB"))
+    if image.shape[0]!=resize_to or image.shape[1]!=resize_to:
+        image = cv2.resize(src=image, dsize=(resize_to,resize_to), interpolation = cv2.INTER_AREA)
+    image = image.astype(np.float32)/255.0
+
+    image = image[None].transpose(0,3,1,2)
+    image = torch.from_numpy(image)
+
+    mask = np.array(Image.open(mask).convert("L"))
+    if mask.shape[0]!=resize_to or mask.shape[1]!=resize_to:
+        mask = cv2.resize(src=mask, dsize=(resize_to,resize_to), interpolation = cv2.INTER_AREA)
+    mask = mask.astype(np.float32)/255.0
+
+    mask = mask[None,None]
+    mask[mask < 0.5] = 0
+    mask[mask >= 0.5] = 1
+    mask = torch.from_numpy(mask)
+
+    if mask_inverted:
+        masked_image = mask*image
+    else:
+        masked_image = (1-mask)*image
+
+    ## SEGMENTATION MASK
+    seg_mask = np.array(Image.open(seg_mask_path).convert("RGB"))
+
+    if seg_mask.shape[0]!=resize_to or seg_mask.shape[1]!=resize_to:
+        seg_mask = cv2.resize(seg_mask, (resize_to, resize_to), interpolation=cv2.INTER_NEAREST)
+    seg_mask = seg_mask.astype(np.float32)/255.0
+    seg_mask = seg_mask[None].transpose(0,3,1,2)
+    seg_mask = torch.from_numpy(seg_mask)
+    
+    batch = {"image": image, "mask": mask, "masked_image": masked_image,"seg_mask": seg_mask}
+
+    for k in batch:
+        batch[k] = batch[k].to(device=device)
+        batch[k] = batch[k]*2.0-1.0
+    return batch
+
+
 def sample_model_original(model, ddim_sampler, batch, steps = 50, device = "cuda:0", return_values = False, out_path = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/TEST_CUSTOM_IN_TRAINING.png"):
     # print(sampler)
     # exit()

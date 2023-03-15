@@ -22,3 +22,11 @@ data/open_source_samples/*.csv
 data/samples/interiornet_output/*
 data/open_source_samples/interiornet_mask_generated/*
 data/modules/lama/saicinpainting/evaluation/masks/countless/memprof/countless2d_gcim_N_1000.png
+data/open_source_samples/dynafill/subset/*
+data/samples/interiornet_test/*
+ldm/data/test_loader_dynafill/*
+data/samples/DYNAFILL/*
+data/open_source_samples/dynafill/subset_modified*
+data/samples/DYNAFILL*/*
+data/samples/Car_custom/*
+data/modules/DYNAFILL/*.png

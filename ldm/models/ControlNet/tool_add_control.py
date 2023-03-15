@@ -5,7 +5,6 @@ from ldm.models.ControlNet.model import create_model
 
 root_dir = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/"
 
-
 input_path = root_dir + "models/ldm/inpainting_big/model_compvis.ckpt"
 output_path = root_dir + "models/ldm/ControlNet/model_cn.ckpt"
 
