@@ -371,7 +371,6 @@ class ImageLogger(Callback):
                 if isinstance(images[k], torch.Tensor):
                     images[k] = images[k].detach().cpu()
                     if self.clamp:
-               
                         images[k] = torch.clamp(images[k], -1., 1.)
 
             self.log_local(pl_module.logger.save_dir, split, images,

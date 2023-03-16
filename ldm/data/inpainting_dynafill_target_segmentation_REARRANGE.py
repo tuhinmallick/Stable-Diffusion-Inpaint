@@ -10,20 +10,21 @@ from einops import rearrange
 import cv2
 
 
-class InpaintingDynaFillNOCONTROLARRANGETargetSegmentation(Dataset):
+class InpaintingDynaFillARRANGETargetSegmentation(Dataset):
     def __init__(self,
                  csv_file,
                  data_root,
                  partition,
                  size,
                  interpolation="bicubic",
+                 controlNet = False
                  ):
 
         self.csv_df = pd.read_csv(csv_file)
         # filter partition
         self.csv_df = self.csv_df[self.csv_df["partition"] == partition]
         self._length = len(self.csv_df)
-
+        self.controlNet = controlNet
         self.data_root = data_root
         self.size = size
         self.transform = None
@@ -63,45 +64,33 @@ class InpaintingDynaFillNOCONTROLARRANGETargetSegmentation(Dataset):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         
         image = image.astype(np.float32)/255.0
-
-        # image = torch.from_numpy(image)
-
-        # mask = np.array(Image.open(mask_path).convert("L"))
+        # MASK AND MASKED IMAGE
         mask = cv2.imread(mask_path)
         mask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
-
         mask = mask.astype(np.float32)/255.0
-
-        # mask = mask[None] # add dimension at start to match size image
         mask[mask < 0.5] = 0
         mask[mask >= 0.5] = 1
         mask = mask[...,None]
-        # mask = torch.from_numpy(mask[...,None]) # add dimension at start to match channel size image
-
         masked_image = (1-mask)*image  # nullify white part of the images
 
         # IMAGE TARGET
-        # image_target = np.array(Image.open(image_target_path).convert("RGB"))
         image_target = cv2.imread(image_target_path)
         image_target = cv2.cvtColor(image_target, cv2.COLOR_BGR2RGB)
-
         image_target = image_target.astype(np.float32)/255.0
-        # image_target = torch.from_numpy(image_target)
 
         # SEGMENTATION MASK
         seg_mask = cv2.imread(seg_mask_path)
         seg_mask = cv2.cvtColor(seg_mask, cv2.COLOR_BGR2RGB)
-
-        # seg_mask = np.array(Image.open(seg_mask_path).convert("RGB"))
-
         seg_mask = seg_mask.astype(np.float32)/255.0
 
         # The input image is the target, conditioned by masked version of the origin
-        batch = {"image": image_target, "mask": mask,
-                 "masked_image": masked_image, "seg_mask": seg_mask}
+        if self.controlNet:
+            batch = {"image": image_target, "mask": mask,
+                 "masked_image": masked_image, "hint": seg_mask}
+        else:
+            batch = {"image": image_target, "mask": mask,
+                    "masked_image": masked_image, "seg_mask": seg_mask}
 
-        # for k in batch:
-        #     batch[k] = batch[k]*2.0-1.0
         return batch
 
     def __getitem__(self, i):
@@ -116,7 +105,7 @@ class InpaintingDynaFillNOCONTROLARRANGETargetSegmentation(Dataset):
         return transformed_example
 
 
-class InpaintingDynaFillNOCONTROLARRANGETargetSegmentationTrain(InpaintingDynaFillNOCONTROLARRANGETargetSegmentation):
+class InpaintingDynaFillARRANGETargetSegmentationTrain(InpaintingDynaFillARRANGETargetSegmentation):
     def __init__(self, csv_file, data_root, **kwargs):
         super().__init__(csv_file=csv_file, partition="train", data_root=data_root, **kwargs)
 
@@ -126,7 +115,7 @@ class InpaintingDynaFillNOCONTROLARRANGETargetSegmentationTrain(InpaintingDynaFi
                         transforms.Lambda(lambda x: rearrange(x * 2. - 1., 'c h w -> h w c'))])
 
 
-class InpaintingDynaFillNOCONTROLARRANGETargetSegmentationValidation(InpaintingDynaFillNOCONTROLARRANGETargetSegmentation):
+class InpaintingDynaFillARRANGETargetSegmentationValidation(InpaintingDynaFillARRANGETargetSegmentation):
     def __init__(self, csv_file, data_root, **kwargs):
         super().__init__(csv_file=csv_file, partition="validation",
                          data_root=data_root, **kwargs)
@@ -161,7 +150,7 @@ if __name__ == "__main__":
     data_root = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/Datasets/DynaFill/"
     csv_file = "data/modules/DYNAFILL/full_to_target.csv"
 
-    ip_train = InpaintingDynaFillNOCONTROLARRANGETargetSegmentationTrain(
+    ip_train = InpaintingDynaFillARRANGETargetSegmentationTrain(
         size=256, csv_file=csv_file, data_root=data_root)
 
     ip_train_loader = DataLoader(ip_train, batch_size=1, num_workers=4,
@@ -182,6 +171,4 @@ if __name__ == "__main__":
             rgb_img = rgb_img.permute(1, 2, 0).numpy() # again because we did a transformation
 
             cv2.imwrite(img=cv2.cvtColor(rgb_img, cv2.COLOR_BGR2RGB), filename="ldm/data/test_loader_dynafill_rearrange/%s_test.jpg" % k)
-
-
         break

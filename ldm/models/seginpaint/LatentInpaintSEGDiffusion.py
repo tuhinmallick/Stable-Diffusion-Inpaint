@@ -113,9 +113,10 @@ class LatentInpaintDiffusionSEG_CHANNELS(LatentDiffusion):
         
         # THE ORDER of self.concat_keys MUST BE AS IN INFERENCE
         for ck in self.concat_keys:
-            # TODO: ATTENZIONE TOLTO REARRANGE
-            #cc = rearrange(batch[ck], 'b h w c -> b c h w').to(memory_format=torch.contiguous_format).float()
-            cc = batch[ck].to(memory_format=torch.contiguous_format).float()
+            # TODO: ATTENZIONE TOLTO REARRANGE (ORA RIMESSO)
+
+            cc = rearrange(batch[ck], 'b h w c -> b c h w').to(memory_format=torch.contiguous_format).float()
+            # cc = batch[ck].to(memory_format=torch.contiguous_format).float()
             if bs is not None:
                 cc = cc[:bs]
                 cc = cc.to(self.device)
@@ -191,8 +192,12 @@ class LatentInpaintDiffusionSEG_CHANNELS(LatentDiffusion):
                 denoise_grid = self._get_denoise_row_from_list(z_denoise_row)
                 log["denoise_row"] = denoise_grid
 
-        log["masked_image"] = batch["masked_image"].to(memory_format=torch.contiguous_format).float()
-        log["seg_mask"] = batch["seg_mask"].to(memory_format=torch.contiguous_format).float()
-        log["mask"] = batch["mask"].to(memory_format=torch.contiguous_format).float()
+        log["seg_mask"] = rearrange(batch["seg_mask"], 'b h w c -> b c h w').to(memory_format=torch.contiguous_format).float()
+        log["mask"] = rearrange(batch["mask"], 'b h w c -> b c h w').to(memory_format=torch.contiguous_format).float()
+        log["masked_image"] = rearrange(batch["masked_image"], 'b h w c -> b c h w').to(memory_format=torch.contiguous_format).float()
+
+        # log["seg_mask"] = batch["seg_mask"].to(memory_format=torch.contiguous_format).float()
+        # log["mask"] = batch["mask"].to(memory_format=torch.contiguous_format).float()
+        # log["masked_image"] = batch["masked_image"].to(memory_format=torch.contiguous_format).float()
 
         return log

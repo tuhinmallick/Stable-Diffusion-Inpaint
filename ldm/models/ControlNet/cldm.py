@@ -367,9 +367,9 @@ class ControlLDMInPaintConcat(LatentDiffusion):
         
         # THE ORDER of self.concat_keys MUST BE AS IN INFERENCE
         for ck in self.concat_keys:
-            # TODO: ATTENZIONE TOLTO REARRANGE
-            #cc = rearrange(batch[ck], 'b h w c -> b c h w').to(memory_format=torch.contiguous_format).float()
-            cc = batch[ck].to(memory_format=torch.contiguous_format).float()
+            # TODO: ATTENZIONE TOLTO REARRANGE (ORA RIMESSO)
+            cc = rearrange(batch[ck], 'b h w c -> b c h w').to(memory_format=torch.contiguous_format).float()
+            #cc = batch[ck].to(memory_format=torch.contiguous_format).float()
             if bs is not None:
                 cc = cc[:bs]
                 cc = cc.to(self.device)
@@ -396,8 +396,8 @@ class ControlLDMInPaintConcat(LatentDiffusion):
         # control = torch.nn.functional.interpolate(control, size=bchw[-2:])
             
         control = control.to(self.device)
-        # control = einops.rearrange(control, 'b h w c -> b c h w')
-        # control = control.to(memory_format=torch.contiguous_format).float()
+        control = einops.rearrange(control, 'b h w c -> b c h w')
+        control = control.to(memory_format=torch.contiguous_format).float()
         
         # control = torch.cat(control, dim=1)
         

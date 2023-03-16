@@ -187,7 +187,6 @@ if __name__=="__main__":
         im_keys = ['image', 'masked_image', 'mask']
         for k in im_keys:
             # print(batch[k].shape)               
-            # image_de = rearrange(batch[k], 'b h w c -> b c h w'  )
             image_de = batch[k]
             image_de = (image_de + 1)/2
 
@@ -198,7 +197,6 @@ if __name__=="__main__":
             
 
             rgb_img = (image_de).type(torch.uint8).squeeze(0)
-            # rgb_img = rearrange(rgb_img, 'h w c -> c h w'  )
             # print(rgb_img.shape)
             
             img = transforms.ToPILImage()(rgb_img)  

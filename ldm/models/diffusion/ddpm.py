@@ -339,8 +339,9 @@ class DDPM(pl.LightningModule):
         x = batch[k]
         if len(x.shape) == 3:
             x = x[..., None]
-        # TODO: ATTENZIONE TOLTO REARRANGE
-        # x = rearrange(x, 'b h w c -> b c h w')
+        # TODO: ATTENZIONE TOLTO REARRANGE (ORA RIMESSO)
+
+        x = rearrange(x, 'b h w c -> b c h w')
         x = x.to(memory_format=torch.contiguous_format).float()
         return x
 
@@ -1272,16 +1273,7 @@ class LatentDiffusion(DDPM):
             samples, intermediates = ddim_sampler.sample(ddim_steps,batch_size,
                                                             shape,cond,verbose=False,**kwargs)
                 # torch.save(self.state_dict(), "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/test.pth")
-            # else:
-            #     # TODO sample with custom function
-            #     image = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/INPAINTING/inpainting_examples/16693_12.png"
-            #     mask ="/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/data/INPAINTING/inpainting_examples/16693_12_mask.png"
-            #     device = next(self.parameters()).device
-            #     batch = make_batch(image, mask, device,resize_to = 512)
-            #     #### QUA FUNZIONA MANNAGGIA ALLA QUINDI LE RAPPRESENTAZIONI DATE OM èASTP AL PRECEDENTE DDIM SAMPLER SONO SBAGLIATE
-            #     #### LA DIFFERENZA STA NELLA CONCATENAZIONE UNICA DI UN INPUT, PRIMA C'ERA ANCHE LA CROSS-ATTENTION
-            #     samples, intermediates = sample_model_original(self, ddim_sampler = ddim_sampler, batch=batch, device=device, return_values=True)
-            #     #sample_model_original(self, batch=batch, steps=ddim_steps, device=device)
+          
         else:
             samples, intermediates = self.sample(cond=cond, batch_size=batch_size,
                                                  return_intermediates=True,**kwargs)
@@ -1555,10 +1547,11 @@ class LatentInpaintDiffusion(LatentDiffusion):
         
         # THE ORDER of self.concat_keys MUST BE AS IN INFERENCE
         for ck in self.concat_keys:
-            # TODO: ATTENZIONE TOLTO REARRANGE
+            # TODO: ATTENZIONE TOLTO REARRANGE (ORA RIMESSO)
 
-            #cc = rearrange(batch[ck], 'b h w c -> b c h w').to(memory_format=torch.contiguous_format).float()
-            cc = batch[ck].to(memory_format=torch.contiguous_format).float()
+
+            cc = rearrange(batch[ck], 'b h w c -> b c h w').to(memory_format=torch.contiguous_format).float()
+            #cc = batch[ck].to(memory_format=torch.contiguous_format).float()
             if bs is not None:
                 cc = cc[:bs]
                 cc = cc.to(self.device)

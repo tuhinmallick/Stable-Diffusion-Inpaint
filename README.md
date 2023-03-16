@@ -171,6 +171,7 @@ You could also customize the layers you want to freeze. In this case, remove the
 - [x] Integrate [ControlNet mechanism](https://github.com/lllyasviel/ControlNet#guess-anchor)
 - [ ] Use [ConvLSTM](https://github.com/ndrplz/ConvLSTM_pytorch/tree/master) for spatio-temporal coherency into the residual blocks probably (https://arxiv.org/pdf/2101.12072.pdf).
 - [ ] Use weights of text-conditioned inpainting for inpainting only, by filtering out, only the weights of the U-net so you could also use the VAE.
+- [ ] Use efficient [Memory Attention Weights](https://github.com/lllyasviel/ControlNet/blob/16ea3b5379c1e78a4bc8e3fc9cae8d65c42511b1/ldm/modules/diffusionmodules/model.py#L205).
 
 ## Learning rate evaluations
 
