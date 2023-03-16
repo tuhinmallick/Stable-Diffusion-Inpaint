@@ -180,8 +180,8 @@ if __name__=="__main__":
                 image_de = de_transform_mask(image_de)
             else:
                 image_de = de_transform(image_de)
+                
             rgb_img = (image_de).type(torch.uint8).squeeze(0)
-            # rgb_img = rearrange(rgb_img, 'h w c -> c h w'  )
             # print(rgb_img.shape)
             img = transforms.ToPILImage()(rgb_img)  
             # print(img.size)

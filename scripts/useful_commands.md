@@ -10,11 +10,7 @@ python scripts/inpaint_ControlNet_csv.py --csv_file "data/open_source_samples/dy
 python scripts/inpaint_ControlNet_csv.py --csv_file "data/open_source_samples/dynafill/subset/full_to_target.csv" --image_dir "data/open_source_samples/dynafill/subset/" --outdir "data/samples/DYNAFILL_CORRECT/" --ckpt "logs/2023-02-08_custom_keyboard_training_CONTROLNET_DYNAFILL_CORRECT_FULL/checkpoints/xxxxx" --yaml_profile "configs/latent-diffusion/inpainting_runaway_interiornet_ControlNet_Inference.yaml" --device cuda:1 --prefix "DYNAFILL_CN"
 
 
-
-
-python scripts/inpaint_ControlNet_csv.py --csv_file "data/modules/DYNAFILL/full_to_target.csv" --image_dir "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/Datasets/DynaFill/" --outdir "data/samples/DYNAFILL_REAL_VALIDATION/" --ckpt "logs/2023-02-08_custom_keyboard_training_CONTROLNET_DYNAFILL_CORRECT/checkpoints/epoch=000077.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_interiornet_ControlNet_Inference.yaml" --device cuda:1 --prefix "DYNAFILL_CN"
-
-
+python scripts/inpaint_ControlNet_csv.py --csv_file "data/modules/DYNAFILL/full_to_target.csv" --image_dir "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/Datasets/DynaFill/" --outdir "data/samples/DYNAFILL_REAL_VALIDATION/" --ckpt "logs/2023-02-08_custom_keyboard_training_CONTROLNET_DYNAFILL_CORRECT_FULL/checkpoints/epoch=000000.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_interiornet_ControlNet_Inference.yaml" --device cuda:1 --prefix "DYNAFILL_CN"
 
 
 

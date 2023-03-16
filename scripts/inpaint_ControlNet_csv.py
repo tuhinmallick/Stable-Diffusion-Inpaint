@@ -91,6 +91,13 @@ if __name__ == "__main__":
         default=50,
         help="number of ddim sampling steps",
     )
+
+    parser.add_argument(
+        "--limit_images_evaluation",
+        type=int,
+        default=20,
+        help="number of ddim sampling steps",
+    )
     
     parser.add_argument(
         "--ema",
@@ -132,7 +139,9 @@ if __name__ == "__main__":
     
     with torch.no_grad():
         with scope("Sampling"):
-            for image, mask, segm_mask in tqdm(zip(images, masks, segmentation)):
+            for idx, (image, mask, segm_mask) in tqdm(enumerate(zip(images, masks, segmentation))):
+                if idx >= opt.limit_images_evaluation:
+                    break
                 outpath = os.path.join(opt.outdir, "%s_%s_%s_%s.png" % (os.path.split(image)[1].split(".")[0], opt.prefix, ema_prefix, os.path.basename(opt.ckpt)))
 
                 batch = make_batch_seg(image, mask, segm_mask, device=device, resize_to=512, mask_inverted = opt.mask_inverted)
