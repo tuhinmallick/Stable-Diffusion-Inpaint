@@ -3,7 +3,7 @@
 model:
   base_learning_rate: 1.0e-05
 
-  target: ldm.models.seginpaint.LatentInpaintSEGDiffusion.LatentInpaintDiffusionSEG_CHANNELS
+  target: ldm.models.diffusion.ddpm.LatentInpaintDiffusion
   params:
     linear_start: 0.0015
     linear_end: 0.0205
@@ -16,19 +16,19 @@ model:
     cond_stage_trainable: false 
     # do not use ema
     use_ema: false
-    # image_size: 64 # feature map size
-    image_size: 128 # feature map size for 512 ---> l'hanno lasciata a 64 perchè loro hanno addestrato su 256? però in inference questo non viene minimamente usato, solo nei logger
-    channels: 3
+    image_size: 64 # feature map size
+    # image_size: 128 # feature map size for 512 ---> l'hanno lasciata a 64 perchè loro hanno addestrato su 256? però in inference questo non viene minimamente usato, solo nei logger
+    #channels: 3
     concat_mode: true # there will be no context_dim specified in unet,
     # check configs/stable-diffusion/v1-inference.yaml for cross-attention adn context dim
     monitor: val/loss
     #monitor: val/loss_simple_ema
     # scale_factor: 0.18215
+    ckpt_path: "models/ldm/inpainting_big/model_compvis.ckpt"
     finetune_keys_to_retain: null
-    finetune_training_keys: null 
-    encode_seg_with_first_stage: false
-    # ckpt_path: "models/ldm/SEG_INPAINT/model_SEG.ckpt"
-    ckpt_path: "models/ldm/SEG_INPAINT/model_SEG_RGB.ckpt"
+    finetune_training_keys: [model.diffusion_model.input_blocks.0.0.weight,
+                              model_ema.diffusion_modelinput_blocks00weight
+                            ]
 
 
 
@@ -36,7 +36,7 @@ model:
       target: ldm.modules.diffusionmodules.openaimodel.UNetModel
       params:
         image_size: 64 # unused
-        in_channels: 10 # image, masked image, mask, seg-mask (novel weights)
+        in_channels: 7 # image, masked image, mask
         out_channels: 3 #FINAL IMAGE
         model_channels: 256
         attention_resolutions:
@@ -82,7 +82,7 @@ model:
 data:
   target: ldm.data.data_adapter.DataModuleFromConfig
   params:
-    batch_size: 4
+    batch_size: 32
     num_workers: 4
     wrap: false
     train:
@@ -90,14 +90,15 @@ data:
       params:
         csv_file: data/modules/DYNAFILL/full_to_target.csv
         data_root: /data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/Datasets/DynaFill/
-        size: 512
+        controlNet: False
+        size: 256
     validation:
       target: ldm.data.inpainting_dynafill_target_segmentation_REARRANGE.InpaintingDynaFillARRANGETargetSegmentationValidation
       params:
         csv_file: data/modules/DYNAFILL/full_to_target.csv
         data_root: /data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/Datasets/DynaFill/
-        size: 512
-
+        controlNet: False
+        size: 256
 
 lightning:
   find_unused_parameters: True

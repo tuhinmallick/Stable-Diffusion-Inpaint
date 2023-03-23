@@ -16,8 +16,8 @@ model:
     cond_stage_trainable: false 
     # do not use ema
     use_ema: false
-    # image_size: 64 # feature map size
-    image_size: 128 # feature map size for 512 ---> l'hanno lasciata a 64 perchè loro hanno addestrato su 256? però in inference questo non viene minimamente usato, solo nei logger
+    image_size: 64 # feature map size
+    #image_size: 128 # feature map size for 512 ---> l'hanno lasciata a 64 perchè loro hanno addestrato su 256? però in inference questo non viene minimamente usato, solo nei logger
     channels: 3
     concat_mode: true # there will be no context_dim specified in unet,
     # check configs/stable-diffusion/v1-inference.yaml for cross-attention adn context dim
@@ -82,7 +82,7 @@ model:
 data:
   target: ldm.data.data_adapter.DataModuleFromConfig
   params:
-    batch_size: 4
+    batch_size: 32
     num_workers: 4
     wrap: false
     train:
@@ -90,13 +90,13 @@ data:
       params:
         csv_file: data/modules/DYNAFILL/full_to_target.csv
         data_root: /data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/Datasets/DynaFill/
-        size: 512
+        size: 256
     validation:
       target: ldm.data.inpainting_dynafill_target_segmentation_REARRANGE.InpaintingDynaFillARRANGETargetSegmentationValidation
       params:
         csv_file: data/modules/DYNAFILL/full_to_target.csv
         data_root: /data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/Datasets/DynaFill/
-        size: 512
+        size: 256
 
 
 lightning:

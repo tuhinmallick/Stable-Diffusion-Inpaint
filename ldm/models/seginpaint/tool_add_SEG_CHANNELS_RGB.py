@@ -14,7 +14,7 @@ def create_model(config_path):
 root_dir = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/"
 
 input_path = root_dir + "models/ldm/inpainting_big/model_compvis.ckpt"
-output_path = root_dir + "models/ldm/SEG_INPAINT/model_SEG.ckpt"
+output_path = root_dir + "models/ldm/SEG_INPAINT/model_SEG_RGB.ckpt"
 
 config_path =  root_dir + 'models/ldm/SEG_INPAINT/SEG_INPAINT.yaml'
 
@@ -43,7 +43,8 @@ scratch_dict = model.state_dict()
 target_dict = {}
 
 # REPLICATE WEIGHTS FROM MASK
-index_channel_to_repeat = -1
+index_start = 0 
+index_end=3
 to_clone_channels = 3
 
 
@@ -57,17 +58,15 @@ for k,v in scratch_dict.items():
         old_weights = pretrained_weights[k].clone()
         # considering the order of the channels, the last three input channels should be repeated from
         # the mask one (the actual last) to start managing the novel segmentation condition
-        mask_weights = old_weights[:,index_channel_to_repeat,:,:]#.unsqueeze(1)
-        # print(mask_weights.shape)
-        #target_dict[k]
-        seg_weiths = einops.repeat(mask_weights, 'c m n ->c k m n', k=3)
+        rgb_weights = old_weights[:,index_start:index_end,:,:]
+
         target_dict[k] = scratch_dict[k].clone()
         # print(target_dict[k].shape)
         # print(seg_weiths.shape)
         channels_to_clone = (target_dict[k].shape[1]-to_clone_channels)
 
-        target_dict[k][:,channels_to_clone:,:,:] = seg_weiths # novel weights
         target_dict[k][:,:channels_to_clone,:,:] = old_weights # fill old
+        target_dict[k][:,channels_to_clone:,:,:] = rgb_weights # novel weights
         # new_weights = scratch_dict
     else:
         target_dict[k] = pretrained_weights[k].clone()

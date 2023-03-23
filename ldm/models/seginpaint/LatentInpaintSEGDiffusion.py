@@ -14,31 +14,36 @@ class LatentInpaintDiffusionSEG_CHANNELS(LatentDiffusion):
      """
     def __init__(self,
                 # DEFAULT FINETUNE KEYS --> use to add novel channels to the concatenation
-                 finetune_training_keys=("model.diffusion_model.input_blocks.0.0.weight",
-                                "model_ema.diffusion_modelinput_blocks00weight"
-                                ),
                  finetune_keys_to_retain=("model.diffusion_model.input_blocks.0.0.weight",
                                 "model_ema.diffusion_modelinput_blocks00weight"
                                 ),
                  concat_keys=("masked_image","mask","seg_mask"), # AS IN INFERENCE
                  masked_image_key="masked_image",
+                 encode_seg_with_first_stage = False,
                 #  keep_finetune_dims=4,  # if model was trained without concat mode before and we would like to keep these channels
                  keep_finetune_dims=7,  # if model was trained with concat mode before and we would like to keep these channels and add more channels to condition
                  c_concat_log_start=0, # to log reconstruction of c_concat codes, first three channels in our case
                  c_concat_log_end=3,
+                 c_seg_cat_log_start = 4,
+                 c_seg_cat_log_end =7,
                  *args, **kwargs
                  ):
         ckpt_path = kwargs.pop("ckpt_path", None)
         ignore_keys = kwargs.pop("ignore_keys", list())
         super().__init__(*args, **kwargs)
         self.masked_image_key = masked_image_key
+        self.encode_seg_with_first_stage = encode_seg_with_first_stage
         assert self.masked_image_key in concat_keys
-        self.finetune_training_keys = finetune_training_keys
         self.finetune_keys_to_retain = finetune_keys_to_retain
+        
         self.concat_keys = concat_keys
         self.keep_dims = keep_finetune_dims
         self.c_concat_log_start = c_concat_log_start
         self.c_concat_log_end = c_concat_log_end
+        
+        self.c_seg_cat_log_start = c_seg_cat_log_start
+        self.c_seg_cat_log_end = c_seg_cat_log_end
+
         if exists(self.finetune_keys_to_retain): assert exists(ckpt_path), 'can only finetune from a given checkpoint'
         if exists(ckpt_path): self.init_from_ckpt(ckpt_path, ignore_keys)
         
@@ -63,7 +68,7 @@ class LatentInpaintDiffusionSEG_CHANNELS(LatentDiffusion):
                         print(f"modifying key '{name}' and keeping its original {self.keep_dims} (channels) dimensions only")
                         new_entry = torch.zeros_like(param)  # zero init
                 assert exists(new_entry), 'did not find matching parameter to modify'
-                new_entry[:, :self.keep_dims, ...] = sd[k]
+                new_entry[:, :self.keep_dims, ...] = sd[k][:, :self.keep_dims, ...]
                 sd[k] = new_entry
                 
         missing, unexpected = self.load_state_dict(sd, strict=False) if not only_model else self.model.load_state_dict(sd, strict=False)
@@ -103,6 +108,9 @@ class LatentInpaintDiffusionSEG_CHANNELS(LatentDiffusion):
                        
     @torch.no_grad()
     def get_input(self, batch, k, cond_key=None, bs=None, return_first_stage_outputs=False):
+        cdict = {n:p for n,p in self.named_parameters()}
+        a = cdict["model.diffusion_model.input_blocks.0.0.weight"]
+        ttt = a[:,self.keep_dims:,:]
         # note: restricted to non-trainable encoders currently
         assert not self.cond_stage_trainable, 'trainable cond stages not yet supported for inpainting'
         z, c, x, xrec, xc = super().get_input(batch, self.first_stage_key, return_first_stage_outputs=True,
@@ -121,12 +129,17 @@ class LatentInpaintDiffusionSEG_CHANNELS(LatentDiffusion):
                 cc = cc[:bs]
                 cc = cc.to(self.device)
             bchw = z.shape
-            if ck != self.masked_image_key:
-                # interpolating also the seg mask
-                cc = torch.nn.functional.interpolate(cc, size=bchw[-2:])
-            else:
+            if self.encode_seg_with_first_stage and ck=="seg_mask":
+                # print("Encoding %s with first stage" % ck )
                 cc = self.get_first_stage_encoding(self.encode_first_stage(cc))
+            else:
+                if ck != self.masked_image_key:
+                    # interpolating also the seg mask
+                    cc = torch.nn.functional.interpolate(cc, size=bchw[-2:])
+                else:
+                    cc = self.get_first_stage_encoding(self.encode_first_stage(cc))
             c_cat.append(cc)
+
         c_cat = torch.cat(c_cat, dim=1)
         
         # NO CROSS ATTENTION
@@ -156,6 +169,9 @@ class LatentInpaintDiffusionSEG_CHANNELS(LatentDiffusion):
 
         if not (self.c_concat_log_start is None and self.c_concat_log_end is None):
             log["c_concat_decoded"] = self.decode_first_stage(c_cat[:,self.c_concat_log_start:self.c_concat_log_end])
+
+        if self.encode_seg_with_first_stage:
+            log["seg_decoded"] = self.decode_first_stage(c_cat[:,self.c_seg_cat_log_start:self.c_seg_cat_log_end])
 
         if plot_diffusion_rows:
             # get diffusion row
@@ -196,8 +212,31 @@ class LatentInpaintDiffusionSEG_CHANNELS(LatentDiffusion):
         log["mask"] = rearrange(batch["mask"], 'b h w c -> b c h w').to(memory_format=torch.contiguous_format).float()
         log["masked_image"] = rearrange(batch["masked_image"], 'b h w c -> b c h w').to(memory_format=torch.contiguous_format).float()
 
-        # log["seg_mask"] = batch["seg_mask"].to(memory_format=torch.contiguous_format).float()
-        # log["mask"] = batch["mask"].to(memory_format=torch.contiguous_format).float()
-        # log["masked_image"] = batch["masked_image"].to(memory_format=torch.contiguous_format).float()
-
         return log
+
+
+
+########## TODO ##########
+class LatentInpaintDiffusionSEG_CROSSATTENTION_CHANNELS(LatentDiffusion):
+    
+    """
+    can just run as pure inpainting model (only concat mode).
+    To disable finetuning mode, set finetune_keys to None
+     """
+    def __init__(self,
+                # DEFAULT FINETUNE KEYS --> use to add novel channels to the concatenation
+                 finetune_training_keys=("model.diffusion_model.input_blocks.0.0.weight",
+                                "model_ema.diffusion_modelinput_blocks00weight"
+                                ),
+                 finetune_keys_to_retain=("model.diffusion_model.input_blocks.0.0.weight",
+                                "model_ema.diffusion_modelinput_blocks00weight"
+                                ),
+                 concat_keys=("masked_image","mask","seg_mask"), # AS IN INFERENCE
+                 masked_image_key="masked_image",
+                #  keep_finetune_dims=4,  # if model was trained without concat mode before and we would like to keep these channels
+                 keep_finetune_dims=7,  # if model was trained with concat mode before and we would like to keep these channels and add more channels to condition
+                 c_concat_log_start=0, # to log reconstruction of c_concat codes, first three channels in our case
+                 c_concat_log_end=3,
+                 *args, **kwargs
+                 ):
+        pass

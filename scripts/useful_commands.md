@@ -13,9 +13,25 @@ python scripts/inpaint_ControlNet_csv.py --csv_file "data/open_source_samples/dy
 python scripts/inpaint_ControlNet_csv.py --csv_file "data/modules/DYNAFILL/full_to_target.csv" --image_dir "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/Datasets/DynaFill/" --outdir "data/samples/DYNAFILL_REAL_VALIDATION/" --ckpt "logs/2023-02-08_custom_keyboard_training_CONTROLNET_DYNAFILL_CORRECT_FULL/checkpoints/epoch=000000.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_interiornet_ControlNet_Inference.yaml" --device cuda:1 --prefix "DYNAFILL_CN"
 
 
-
-
 python scripts/inpaint_ControlNet.py --indir "data/samples/Car_custom" --outdir "data/samples/DYNAFILL_CORRECT_CUSTOM/" --ckpt "logs/2023-02-08_custom_keyboard_training_CONTROLNET_DYNAFILL_CORRECT/checkpoints/epoch=000077.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_interiornet_ControlNet_Inference.yaml" --device cuda:1 --prefix "DYNAFILL_CN"
+
+
+## DYNAFILL NO CONTROL: RGB AND MASK VS ONLY MASK
+
+python scripts/inpaint_RGB_CHANNELS_csv.py --csv_file "data/modules/DYNAFILL/full_to_target.csv" --image_dir "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/Datasets/DynaFill/" --outdir "data/samples/DYNAFILL_RGB_REAL_VALIDATION/" --ckpt "logs/2023-02-08_SEG_DYNAFILL_FULLARRANGE/checkpoints/epoch=000000.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_DYNAFILL_SEG_INPAINT.yaml" --device cuda:1 --prefix "DYNAFILL_CN"
+
+
+
+python scripts/inpaint_RGB_CHANNELS_csv.py --csv_file "data/modules/DYNAFILL/full_to_target.csv" --image_dir "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/Datasets/DynaFill/" --outdir "data/samples/DYNAFILL_RGB_REAL_VALIDATION_SEG_LEARNED/" --ckpt "logs/2023-02-08_SEG_DYNAFILL_FULLARRANGE_SD_NEW_KEYS_SEG_LOW_RES/checkpoints/epoch=000000.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_DYNAFILL_SEG_INPAINTARRANGE_SD_WEIGHTS_256.yaml" --device cuda:1 --prefix "DYNAFILL_CN"
+
+
+python scripts/inpaint_runaway_correct_from_csv.py --csv_file "data/modules/DYNAFILL/full_to_target.csv" --image_dir "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/Datasets/DynaFill/" --outdir "data/samples/DYNAFILL_RGB_REAL_VALIDATION_CLASSIC/" --ckpt "logs/2023-02-08_CLASSICAL_DYNAFILL_CORRECT_FULL_LOW_RES/checkpoints/epoch=000002.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_DYNAFILL_SD_CLASSICAL_256.yaml" --device cuda:1 --prefix "DYNAFILL_CN"
+
+
+
+
+python scripts/inpaint_runaway_correct_folder.py --indir "data/samples/Car_custom2" --outdir "data/samples/DYNAFILL_CORRECT_CUSTOM/" --ckpt "logs/2023-02-08_CLASSICAL_DYNAFILL_CORRECT_FULL_LOW_RES/checkpoints/epoch=000002.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_DYNAFILL_SD_CLASSICAL_256.yaml" --device cuda:1 --prefix "DYNAFILL_CN" --resize 256
+
 
 
 

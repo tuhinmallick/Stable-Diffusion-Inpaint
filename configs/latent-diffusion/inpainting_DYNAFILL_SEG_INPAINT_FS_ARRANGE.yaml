@@ -26,11 +26,8 @@ model:
     # scale_factor: 0.18215
     finetune_keys_to_retain: null
     finetune_training_keys: null 
-    encode_seg_with_first_stage: false
-    # ckpt_path: "models/ldm/SEG_INPAINT/model_SEG.ckpt"
+    encode_seg_with_first_stage: true
     ckpt_path: "models/ldm/SEG_INPAINT/model_SEG_RGB.ckpt"
-
-
 
     unet_config:
       target: ldm.modules.diffusionmodules.openaimodel.UNetModel

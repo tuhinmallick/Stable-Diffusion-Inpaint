@@ -22,18 +22,18 @@ def make_image(image,  device="cuda:0",resize_to = None):
     return image.to(device=device) # remove batch index
 
 
-def make_batch(image, mask, device="cuda:0", resize_to = None, mask_inverted=False):
+def make_batch(image, mask, target = None, device="cuda:0", resize_to = None, mask_inverted=False):
     image = np.array(Image.open(image).convert("RGB"))
-    if image.shape[0]!=resize_to or image.shape[1]!=resize_to:
-        image = cv2.resize(src=image, dsize=(resize_to,resize_to), interpolation = cv2.INTER_AREA)
+    # if image.shape[0]!=resize_to or image.shape[1]!=resize_to:
+    #     image = cv2.resize(src=image, dsize=(resize_to,resize_to), interpolation = cv2.INTER_AREA)
     image = image.astype(np.float32)/255.0
 
     image = image[None].transpose(0,3,1,2)
     image = torch.from_numpy(image)
 
     mask = np.array(Image.open(mask).convert("L"))
-    if mask.shape[0]!=resize_to or mask.shape[1]!=resize_to:
-        mask = cv2.resize(src=mask, dsize=(resize_to,resize_to), interpolation = cv2.INTER_AREA)
+    # if mask.shape[0]!=resize_to or mask.shape[1]!=resize_to:
+    #     mask = cv2.resize(src=mask, dsize=(resize_to,resize_to), interpolation = cv2.INTER_AREA)
     mask = mask.astype(np.float32)/255.0
 
     mask = mask[None,None]
@@ -47,6 +47,15 @@ def make_batch(image, mask, device="cuda:0", resize_to = None, mask_inverted=Fal
         masked_image = (1-mask)*image
 
     batch = {"image": image, "mask": mask, "masked_image": masked_image}
+    
+    if target: 
+        target = np.array(Image.open(target).convert("RGB"))
+        # if target.shape[0]!=resize_to or target.shape[1]!=resize_to:
+        #     target = cv2.resize(src=target, dsize=(resize_to,resize_to), interpolation = cv2.INTER_AREA)
+        target = target.astype(np.float32)/255.0
+        target = target[None].transpose(0,3,1,2)
+        target = torch.from_numpy(target)
+        batch["target"] = target
 
     for k in batch:
         batch[k] = batch[k].to(device=device)
@@ -54,18 +63,14 @@ def make_batch(image, mask, device="cuda:0", resize_to = None, mask_inverted=Fal
     return batch
 
 
-def make_batch_seg(image, mask, seg_mask_path, device="cuda:0", resize_to = None, mask_inverted=False):
+def make_batch_seg(image, mask, seg_mask_path, target = None, device="cuda:0", resize_to = None):
     image = np.array(Image.open(image).convert("RGB"))
-    if image.shape[0]!=resize_to or image.shape[1]!=resize_to:
-        image = cv2.resize(src=image, dsize=(resize_to,resize_to), interpolation = cv2.INTER_AREA)
     image = image.astype(np.float32)/255.0
 
     image = image[None].transpose(0,3,1,2)
     image = torch.from_numpy(image)
 
     mask = np.array(Image.open(mask).convert("L"))
-    if mask.shape[0]!=resize_to or mask.shape[1]!=resize_to:
-        mask = cv2.resize(src=mask, dsize=(resize_to,resize_to), interpolation = cv2.INTER_AREA)
     mask = mask.astype(np.float32)/255.0
 
     mask = mask[None,None]
@@ -73,21 +78,24 @@ def make_batch_seg(image, mask, seg_mask_path, device="cuda:0", resize_to = None
     mask[mask >= 0.5] = 1
     mask = torch.from_numpy(mask)
 
-    if mask_inverted:
-        masked_image = mask*image
-    else:
-        masked_image = (1-mask)*image
+    
+    masked_image = (1-mask)*image
 
     ## SEGMENTATION MASK
     seg_mask = np.array(Image.open(seg_mask_path).convert("RGB"))
 
-    if seg_mask.shape[0]!=resize_to or seg_mask.shape[1]!=resize_to:
-        seg_mask = cv2.resize(seg_mask, (resize_to, resize_to), interpolation=cv2.INTER_NEAREST)
     seg_mask = seg_mask.astype(np.float32)/255.0
     seg_mask = seg_mask[None].transpose(0,3,1,2)
     seg_mask = torch.from_numpy(seg_mask)
     
     batch = {"image": image, "mask": mask, "masked_image": masked_image,"seg_mask": seg_mask}
+
+    if target: 
+        target = np.array(Image.open(target).convert("RGB"))
+        target = target.astype(np.float32)/255.0
+        target = target[None].transpose(0,3,1,2)
+        target = torch.from_numpy(target)
+        batch["target"] = target
 
     for k in batch:
         batch[k] = batch[k].to(device=device)

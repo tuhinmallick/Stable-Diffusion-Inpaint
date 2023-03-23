@@ -16,19 +16,18 @@ model:
     cond_stage_trainable: false 
     # do not use ema
     use_ema: false
-    # image_size: 64 # feature map size
-    image_size: 128 # feature map size for 512 ---> l'hanno lasciata a 64 perchè loro hanno addestrato su 256? però in inference questo non viene minimamente usato, solo nei logger
+    image_size: 64 # feature map size
+    #image_size: 128 # feature map size for 512 ---> l'hanno lasciata a 64 perchè loro hanno addestrato su 256? però in inference questo non viene minimamente usato, solo nei logger
     channels: 3
     concat_mode: true # there will be no context_dim specified in unet,
     # check configs/stable-diffusion/v1-inference.yaml for cross-attention adn context dim
     monitor: val/loss
     #monitor: val/loss_simple_ema
     # scale_factor: 0.18215
-    finetune_keys_to_retain: null
-    finetune_training_keys: null 
+    finetune_keys_to_retain: ["model.diffusion_model.input_blocks.0.0.weight", "model_ema.diffusion_modelinput_blocks00weight"]
+    keep_finetune_dims: 3 # only trained noise
     encode_seg_with_first_stage: false
-    # ckpt_path: "models/ldm/SEG_INPAINT/model_SEG.ckpt"
-    ckpt_path: "models/ldm/SEG_INPAINT/model_SEG_RGB.ckpt"
+    ckpt_path: "models/ldm/inpainting_big/model_compvis.ckpt"
 
 
 
@@ -82,7 +81,7 @@ model:
 data:
   target: ldm.data.data_adapter.DataModuleFromConfig
   params:
-    batch_size: 4
+    batch_size: 32
     num_workers: 4
     wrap: false
     train:
@@ -90,13 +89,13 @@ data:
       params:
         csv_file: data/modules/DYNAFILL/full_to_target.csv
         data_root: /data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/Datasets/DynaFill/
-        size: 512
+        size: 256
     validation:
       target: ldm.data.inpainting_dynafill_target_segmentation_REARRANGE.InpaintingDynaFillARRANGETargetSegmentationValidation
       params:
         csv_file: data/modules/DYNAFILL/full_to_target.csv
         data_root: /data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/Datasets/DynaFill/
-        size: 512
+        size: 256
 
 
 lightning:

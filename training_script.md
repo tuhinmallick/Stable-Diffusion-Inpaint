@@ -60,8 +60,23 @@ python3 main_inpainting.py  --train  --name  custom_keyboard_training_CONTROLNET
 python3 main_inpainting.py  --train  --name  CONTROLNET_DYNAFILL_FULL_ARRANGE --base  configs/latent-diffusion/inpainting_DYNAFILL_ControlNet_ARRANGE.yaml   --gpus  1,   --seed  42
 
 
+python3 main_inpainting.py  --train  --name  CLASSICAL_DYNAFILL_CORRECT_FULL --base  configs/latent-diffusion/inpainting_DYNAFILL_SD_CLASSICAL.yaml   --gpus  1,   --seed  42
+
+
+python3 main_inpainting.py  --train  --name  CLASSICAL_DYNAFILL_CORRECT_FULL_LOW_RES --base  configs/latent-diffusion/inpainting_DYNAFILL_SD_CLASSICAL_256.yaml   --gpus  1,   --seed  42
+
+
 ############## CLASSICAL WITH SEGMENTATION CHANNELS DYNAFILL FULL #######################
 python3 main_inpainting.py  --train  --name SEG_DYNAFILL_FULL --base  configs/latent-diffusion/inpainting_runaway_DYNAFILL_SEG_INPAINT.yaml   --gpus  0,   --seed  42
 
 
 python3 main_inpainting.py  --train  --name SEG_DYNAFILL_FULLARRANGE --base  configs/latent-diffusion/inpainting_DYNAFILL_SEG_INPAINTARRANGE.yaml   --gpus  0,   --seed  42
+
+
+python3 main_inpainting.py  --train  --name SEG_DYNAFILL_FS_FULLARRANGE_WF --base  configs/latent-diffusion/inpainting_DYNAFILL_SEG_INPAINTARRANGE.yaml   --gpus  1,   --seed  42
+
+
+python3 main_inpainting.py  --train  --name SEG_DYNAFILL_FS_FULLARRANGE_WF_LOW_RES --base  configs/latent-diffusion/inpainting_DYNAFILL_SEG_INPAINTARRANGE_256.yaml   --gpus  0,   --seed  42
+
+
+python3 main_inpainting.py  --train  --name SEG_DYNAFILL_FULLARRANGE_SD_NEW_KEYS_SEG_LOW_RES --base  configs/latent-diffusion/inpainting_DYNAFILL_SEG_INPAINTARRANGE_SD_WEIGHTS_256.yaml   --gpus  0,   --seed  42

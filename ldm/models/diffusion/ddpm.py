@@ -1645,7 +1645,7 @@ class LatentInpaintDiffusion(LatentDiffusion):
                 # denoise_grid_custom2 = self._get_denoise_row_from_list(z_denoise_row_custom2)
                 # log["denoise_row_custom2"] = denoise_grid_custom2
 
-        log["masked_image"] = batch["masked_image"].to(memory_format=torch.contiguous_format).float()
-        # log["masked_image"] = rearrange(batch["masked_image"],
-        #                                 'b h w c -> b c h w').to(memory_format=torch.contiguous_format).float()
+        # log["masked_image"] = batch["masked_image"].to(memory_format=torch.contiguous_format).float()
+        log["masked_image"] = rearrange(batch["masked_image"],
+                                        'b h w c -> b c h w').to(memory_format=torch.contiguous_format).float()
         return log
