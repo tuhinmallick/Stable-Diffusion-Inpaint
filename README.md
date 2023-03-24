@@ -144,72 +144,6 @@ Creating a dataset with just three images of office desks with masked keyboard a
 
 ![Diffusion Samples](data/samples/readme_images/training.jpg)
 
-
-## Partial training for the U-NET backbone
-
-In any case of partial U-NET finetuning, you must remove the gradient checkpointing carried out in the Attention and Residual blocks (higher memory consumption). To do that, just add the `use_checkpoint: False` under the `unet_config` field in your configuration `.yaml` file.
-
-### Training only shallow layers
-From [this paper](https://arxiv.org/abs/2002.08438), it seems that fine-tuning only the shallow layers of the U-NET (i.e. encoder) instead of fine-tuning the entire network can produce better results. In this case, we are training a latent-diffusion model, but i thought this worthed a shot!
-
-In order to partially fine-tune the U-NET, add  `freeze_deep_layers: True` under the `unet_config` field in your configuration `.yaml` file. This would remove from the grads calculation the `output_blocks` of the U-NET. 
-
-### Training only attention blocks
-[This paper](https://openreview.net/pdf?id=0J6afk9DqrR), it seems that fine-tuning only the attention blocks while freezing residual blocks provides higher performance for classical diffusion models.
-As an additional advantage, attention block tuning is more memory-efficient since it only takes 10.3% of the total parameters.
-Again, stable diffusion is a latent diffusion model, but i thought that this results could be transferred also in the latent diffusion space!
-
-In order to partially fine-tune only the U-NET attention layers, add  `fine_tune_attention_layers: True` under the `unet_config` field in your configuration `.yaml` file.
-
-### Training custom layers only (TODO)
-
-You could also customize the layers you want to freeze. In this case, remove the added `freeze_deep_layers: True` and instead add the `finetune_training_keys: [diffusion_model.input_blocks.0.0]` (in this case, i am just training the input block).
-
-
-## TODO
-
-- [ ] Describe and produce high-quality reference scripts
-- [x] Fine-tuning script
-- [x] General dataloader
-- [x] Integrate [ControlNet mechanism](https://github.com/lllyasviel/ControlNet#guess-anchor)
-- [ ] Use [ConvLSTM](https://github.com/ndrplz/ConvLSTM_pytorch/tree/master) for spatio-temporal coherency into the residual blocks probably (https://arxiv.org/pdf/2101.12072.pdf).
-- [ ] Use weights of text-conditioned inpainting for inpainting only, by filtering out, only the weights of the U-net so you could also use the VAE.
-- [ ] Use efficient [Memory Attention Weights](https://github.com/lllyasviel/ControlNet/blob/16ea3b5379c1e78a4bc8e3fc9cae8d65c42511b1/ldm/modules/diffusionmodules/model.py#L205).
-
-## Learning rate evaluations
-
-- Fixed Learning rate (4e-6) provides better results for fine-tuning for few epochs and small datasets;
-- CosineScheduler fits better longer training process with huge datasets;
-
-
-## Acknowledgements 
-
-- The training pipeline is hugely based on [CompVis's](https://github.com/CompVis/stable-diffusion) and [Runaway's](https://github.com/runwayml/stable-diffusion) codebases.
-
-- The modified yaml configuration files were inspired by [Pesser's implementation](https://github.com/pesser/stable-diffusion).
-
-Thanks for open-sourcing!
-
-## Known installation problems
-
-### Taming transformers module
-
-```
-from taming.modules.vqvae.quantize import VectorQuantizer2 as VectorQuantizer
-Import error taming
-``` 
-
-to fix just force install to ```pip install taming-transformers```
-
-### VectorQuantizer2 module
-
-```
-ImportError: cannot import name 'VectorQuantizer2'
-``` 
-
-replace ```quantize.py``` in ```taming/modules/vqvae/quantize.py``` with [this version](https://github.com/CompVis/taming-transformers/blob/master/taming/modules/vqvae/quantize.py).
-
-
 ## BibTeX
 
 ```
@@ -219,5 +153,3 @@ replace ```quantize.py``` in ```taming/modules/vqvae/quantize.py``` with [this v
       year={2023},
 }
 ```
-
-
