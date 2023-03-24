@@ -10,12 +10,20 @@ def are_same_image(image1, image2):
 
 
 # Load the images
-img_1_path = "logs/2023-02-08_CLASSICAL_DYNAFILL_CORRECT_FULL_LOW_RES/images/train/samples_gs-003750_e-000001_b-001330.png"
-img_2_path =  "logs/2023-02-08_SEG_DYNAFILL_FULLARRANGE_SD_NEW_KEYS_SEG_LOW_RES/images/train/samples_gs-003750_e-000001_b-001330.png"
+# img_1_path = "logs/2023-02-08_CLASSICAL_DYNAFILL_CORRECT_FULL_LOW_RES/images/train/samples_gs-003750_e-000001_b-001330.png"
+# img_2_path =  "logs/2023-02-08_SEG_DYNAFILL_FULLARRANGE_SD_NEW_KEYS_SEG_LOW_RES/images/train/samples_gs-003750_e-000001_b-001330.png"
 
 
-img_1_path = "logs/2023-02-08_CLASSICAL_DYNAFILL_CORRECT_FULL_LOW_RES/images/train/samples_gs-004500_e-000001_b-002080.png"
-img_2_path =  "logs/2023-02-08_SEG_DYNAFILL_FULLARRANGE_SD_NEW_KEYS_SEG_LOW_RES/images/train/samples_gs-004500_e-000001_b-002080.png"
+# img_1_path = "logs/2023-02-08_CLASSICAL_DYNAFILL_CORRECT_FULL_LOW_RES/images/train/samples_gs-004500_e-000001_b-002080.png"
+# img_2_path =  "logs/2023-02-08_SEG_DYNAFILL_FULLARRANGE_SD_NEW_KEYS_SEG_LOW_RES/images/train/samples_gs-004500_e-000001_b-002080.png"
+
+# img_1_path = "logs/2023-02-08_CLASSICAL_DYNAFILL_CORRECT_FULL_LOW_RES/images/train/samples_gs-005250_e-000002_b-000410.png"
+# img_2_path =  "logs/2023-02-08_SEG_DYNAFILL_FULLARRANGE_SD_NEW_KEYS_SEG_LOW_RES/images/train/samples_gs-005250_e-000002_b-000410.png"
+# img_1_path = "logs/2023-02-08_CLASSICAL_DYNAFILL_CORRECT_FULL_LOW_RES/images/train/samples_gs-006000_e-000002_b-001160.png"
+# img_2_path =  "logs/2023-02-08_SEG_DYNAFILL_FULLARRANGE_SD_NEW_KEYS_SEG_LOW_RES/images/train/samples_gs-006000_e-000002_b-001160.png"
+
+img_1_path = "logs/2023-02-08_CLASSICAL_DYNAFILL_CORRECT_FULL_LOW_RES/images/train/samples_gs-006750_e-000002_b-001910.png"
+img_2_path =  "logs/2023-02-08_SEG_DYNAFILL_FULLARRANGE_SD_NEW_KEYS_SEG_LOW_RES/images/train/samples_gs-006750_e-000002_b-001910.png"
 
 
 before = cv2.imread(img_1_path)

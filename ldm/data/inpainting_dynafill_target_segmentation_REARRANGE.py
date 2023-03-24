@@ -83,13 +83,16 @@ class InpaintingDynaFillARRANGETargetSegmentation(Dataset):
         seg_mask = cv2.cvtColor(seg_mask, cv2.COLOR_BGR2RGB)
         seg_mask = seg_mask.astype(np.float32)/255.0
 
+        mask_with_seg = mask*seg_mask
+        seg_mask_maked = (1-mask)*seg_mask
+
         # The input image is the target, conditioned by masked version of the origin
         if self.controlNet:
             batch = {"image": image_target, "mask": mask,
-                 "masked_image": masked_image, "hint": seg_mask}
+                 "masked_image": masked_image, "hint": seg_mask, "masked_hint": seg_mask_maked, "hint_with_mask": mask_with_seg}
         else:
             batch = {"image": image_target, "mask": mask,
-                    "masked_image": masked_image, "seg_mask": seg_mask}
+                    "masked_image": masked_image, "seg_mask": seg_mask, "masked_seg_mask": seg_mask_maked, "mask_with_seg":mask_with_seg}
 
         return batch
 
@@ -157,7 +160,7 @@ if __name__ == "__main__":
                                  pin_memory=True, shuffle=False)
 
     for idx, batch in enumerate(ip_train_loader):
-        im_keys = ['image', 'masked_image', 'mask', "seg_mask"]
+        im_keys = ['image', 'masked_image', 'mask', "seg_mask", "masked_seg_mask", "mask_with_seg"]
         for k in im_keys:
             # print(batch[k].shape)
             image_de = batch[k]

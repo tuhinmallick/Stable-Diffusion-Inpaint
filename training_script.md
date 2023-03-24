@@ -80,3 +80,6 @@ python3 main_inpainting.py  --train  --name SEG_DYNAFILL_FS_FULLARRANGE_WF_LOW_R
 
 
 python3 main_inpainting.py  --train  --name SEG_DYNAFILL_FULLARRANGE_SD_NEW_KEYS_SEG_LOW_RES --base  configs/latent-diffusion/inpainting_DYNAFILL_SEG_INPAINTARRANGE_SD_WEIGHTS_256.yaml   --gpus  0,   --seed  42
+
+
+python3 main_inpainting.py  --train  --name SEG_DYNAFILL_RECONSTRUCT_RGB --base configs/latent-diffusion/seg_mask_reconstruction/inpainting_DYNAFILL_SEG_RECON_256.yaml --gpus 1, --seed 42

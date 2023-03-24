@@ -59,4 +59,3 @@ difference = cv2.subtract(a, b)
 result = not np.any(difference)
 
 print("METHOD 3", result)
-
