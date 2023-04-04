@@ -778,8 +778,6 @@ class UNetModel(nn.Module):
             assert y.shape == (x.shape[0],)
             emb = emb + self.label_emb(y)
 
-        #print("conditioning plugged in via crossattn -->", context)
-
         h = x.type(self.dtype)
         for module in self.input_blocks:
             h = module(h, emb, context)

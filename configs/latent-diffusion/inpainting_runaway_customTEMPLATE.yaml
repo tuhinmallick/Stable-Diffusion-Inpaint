@@ -24,17 +24,6 @@ model:
     # scale_factor: 0.18215
     ckpt_path: "models/ldm/inpainting_big/model_compvis.ckpt"
     
-    # scheduler_config:
-    #   target: ldm.lr_scheduler.LambdaWarmUpCosineScheduler
-    #   params:
-    #     verbosity_interval: 0
-    #     # warm_up_steps: 1000
-    #     warm_up_steps: 2500
-    #     max_decay_steps: 50000
-    #     lr_start: 1.e-6
-    #     # lr_start: 0.001
-    #     lr_max: 1
-    #     lr_min: 0.0001
     scheduler_config: # 10000 warmup steps
       target: ldm.lr_scheduler.LambdaLinearScheduler
       params:

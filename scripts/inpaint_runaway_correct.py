@@ -65,6 +65,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--resize",
         type=int,
+        default = 512,
         help="resize to ",
     )
     
@@ -88,8 +89,6 @@ if __name__ == "__main__":
         action='store_true',
         help="use ema weights",
     )
-    
-
 
     opt = parser.parse_args()
 
@@ -105,7 +104,6 @@ if __name__ == "__main__":
                             strict=False)
 
     print("Loading modeling from %s" % opt.ckpt)
-    
     
     device = torch.device(opt.device) if torch.cuda.is_available() and opt.device is not "cpu" else torch.device("cpu")
     
@@ -123,7 +121,7 @@ if __name__ == "__main__":
             for image, mask in tqdm(zip(images, masks)):
                 outpath = os.path.join(opt.outdir, "%s_%s_%s_%s.png" % (os.path.split(image)[1].split(".")[0], opt.prefix, ema_prefix, os.path.basename(opt.ckpt)))
 
-                batch = make_batch(image, mask, device=device, resize_to=opt.resize, mask_inverted = opt.mask_inverted)
+                batch = make_batch(image, mask, device=device, resize_to=opt.resize)
                 
                 c = model.cond_stage_model.encode(batch["masked_image"])
                                 
@@ -132,6 +130,7 @@ if __name__ == "__main__":
 
                 c = torch.cat((c, cc), dim=1)
 
+                print(c.shape)
 
                 shape = (3,) + c.shape[2:]
 

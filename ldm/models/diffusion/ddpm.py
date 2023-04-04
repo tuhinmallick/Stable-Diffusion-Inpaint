@@ -18,17 +18,13 @@ from functools import partial
 from tqdm import tqdm
 from torchvision.utils import make_grid
 from pytorch_lightning.utilities.distributed import rank_zero_only
-
 from ldm.util import log_txt_as_img, exists, default, ismap, isimage, mean_flat, count_params, instantiate_from_config
 from ldm.modules.ema import LitEma
 from ldm.modules.distributions.distributions import normal_kl, DiagonalGaussianDistribution
 from ldm.models.autoencoder import VQModelInterface, IdentityFirstStage, AutoencoderKL
 from ldm.modules.diffusionmodules.util import make_beta_schedule, extract_into_tensor, noise_like
 from ldm.models.diffusion.ddim import DDIMSampler
-from PIL import Image # TODO: messo solo per testing
-import cv2
 from pytorch_lightning import seed_everything
-from inpaint_utils import make_batch,sample_model_original
 
 __conditioning_keys__ = {'concat': 'c_concat',
                          'crossattn': 'c_crossattn',
@@ -1535,6 +1531,7 @@ class LatentInpaintDiffusion(LatentDiffusion):
             return [opt], scheduler
         return opt
                        
+
     @torch.no_grad()
     def get_input(self, batch, k, cond_key=None, bs=None, return_first_stage_outputs=False):
         # note: restricted to non-trainable encoders currently
@@ -1547,9 +1544,6 @@ class LatentInpaintDiffusion(LatentDiffusion):
         
         # THE ORDER of self.concat_keys MUST BE AS IN INFERENCE
         for ck in self.concat_keys:
-            # TODO: ATTENZIONE TOLTO REARRANGE (ORA RIMESSO)
-
-
             cc = rearrange(batch[ck], 'b h w c -> b c h w').to(memory_format=torch.contiguous_format).float()
             #cc = batch[ck].to(memory_format=torch.contiguous_format).float()
             if bs is not None:
@@ -1564,9 +1558,7 @@ class LatentInpaintDiffusion(LatentDiffusion):
         c_cat = torch.cat(c_cat, dim=1)
         
         # NO CROSS ATTENTION
-        all_conds = [c_cat]
-        
-        # all_conds = {"c_concat": [c_cat], "c_crossattn": [c]}
+        all_conds = [c_cat]        
         if return_first_stage_outputs:
             return z, all_conds, x, xrec, xc
         return z, all_conds

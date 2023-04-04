@@ -71,7 +71,7 @@ For this use case, you should need to specify a ```path/to/input_folder/``` that
 To have meaningful results, you should download inpainting weights provided by the authors as baseline with:
 
 ```
-wget -O models/ldm/inpainting_big/model.ckpt https://ommer-lab.com/files/latent-diffusion/inpainting_big.zip
+wget -O models/ldm/inpainting_big/model_compvis.ckpt https://ommer-lab.com/files/latent-diffusion/inpainting_big.zip
 ```
 
 N.B. even if the file was provided as a zip file, it corresponds to [a checkpoint file saved with pytorch-lightning](https://github.com/CompVis/stable-diffusion/issues/17#issuecomment-1232756078).

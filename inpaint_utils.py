@@ -1,152 +1,38 @@
 import torch, numpy as np 
 from PIL import Image
-from ldm.models.diffusion.ddim import DDIMSampler
 import cv2 
 from typing import List, Dict
-
-def average_between_images(list_of_images):
-    return np.mean([np.array(Image.open(x).convert("RGB")) for x in list_of_images])
     
-
-
-def make_image(image,  device="cuda:0",resize_to = None):
-    image = np.array(Image.open(image).convert("RGB"))
-    
+def resize_if(image, resize_to):
     if image.shape[0]!=resize_to or image.shape[1]!=resize_to:
         image = cv2.resize(src=image, dsize=(resize_to,resize_to), interpolation = cv2.INTER_AREA)
-    image = image.astype(np.float32)/255.0
-    
-    image = image[None].transpose(0,3,1,2)
-    image = torch.from_numpy(image)
-    
-    return image.to(device=device) # remove batch index
+    return image
 
-
-def make_batch(image, mask, target = None, device="cuda:0", resize_to = None, mask_inverted=False):
-    image = np.array(Image.open(image).convert("RGB"))
-    # if image.shape[0]!=resize_to or image.shape[1]!=resize_to:
-    #     image = cv2.resize(src=image, dsize=(resize_to,resize_to), interpolation = cv2.INTER_AREA)
-    image = image.astype(np.float32)/255.0
-
-    image = image[None].transpose(0,3,1,2)
-    image = torch.from_numpy(image)
-
-    mask = np.array(Image.open(mask).convert("L"))
-    # if mask.shape[0]!=resize_to or mask.shape[1]!=resize_to:
-    #     mask = cv2.resize(src=mask, dsize=(resize_to,resize_to), interpolation = cv2.INTER_AREA)
-    mask = mask.astype(np.float32)/255.0
-
-    mask = mask[None,None]
-    mask[mask < 0.5] = 0
-    mask[mask >= 0.5] = 1
-    mask = torch.from_numpy(mask)
-
-    if mask_inverted:
-        masked_image = mask*image
-    else:
-        masked_image = (1-mask)*image
-
-    batch = {"image": image, "mask": mask, "masked_image": masked_image}
-    
-    if target: 
-        target = np.array(Image.open(target).convert("RGB"))
-        # if target.shape[0]!=resize_to or target.shape[1]!=resize_to:
-        #     target = cv2.resize(src=target, dsize=(resize_to,resize_to), interpolation = cv2.INTER_AREA)
-        target = target.astype(np.float32)/255.0
-        target = target[None].transpose(0,3,1,2)
-        target = torch.from_numpy(target)
-        batch["target"] = target
-
-    for k in batch:
-        batch[k] = batch[k].to(device=device)
-        batch[k] = batch[k]*2.0-1.0
-    return batch
-
-
-def make_batch_seg(image, mask, seg_mask_path, target = None, device="cuda:0", resize_to = None):
+def make_batch(image, mask, device="cuda:0", resize_to = None):
     image = np.array(Image.open(image).convert("RGB"))
     image = image.astype(np.float32)/255.0
+    image = resize_if(image, resize_to)
 
     image = image[None].transpose(0,3,1,2)
     image = torch.from_numpy(image)
 
     mask = np.array(Image.open(mask).convert("L"))
     mask = mask.astype(np.float32)/255.0
+    mask = resize_if(mask, resize_to)
 
     mask = mask[None,None]
     mask[mask < 0.5] = 0
     mask[mask >= 0.5] = 1
     mask = torch.from_numpy(mask)
-
-    
     masked_image = (1-mask)*image
 
-    ## SEGMENTATION MASK
-    seg_mask = np.array(Image.open(seg_mask_path).convert("RGB"))
-
-    seg_mask = seg_mask.astype(np.float32)/255.0
-    seg_mask = seg_mask[None].transpose(0,3,1,2)
-    seg_mask = torch.from_numpy(seg_mask)
-    
-    batch = {"image": image, "mask": mask, "masked_image": masked_image,"seg_mask": seg_mask}
-
-    if target: 
-        target = np.array(Image.open(target).convert("RGB"))
-        target = target.astype(np.float32)/255.0
-        target = target[None].transpose(0,3,1,2)
-        target = torch.from_numpy(target)
-        batch["target"] = target
+    batch = {"image": image, "mask": mask, "masked_image": masked_image}
 
     for k in batch:
         batch[k] = batch[k].to(device=device)
         batch[k] = batch[k]*2.0-1.0
     return batch
 
-
-def sample_model_original(model, ddim_sampler, batch, steps = 50, device = "cuda:0", return_values = False, out_path = "/data01/lorenzo.stacchio/TU GRAZ/Stable_Diffusion_Inpaiting/stable-diffusion_custom_inpaint/TEST_CUSTOM_IN_TRAINING.png"):
-    # print(sampler)
-    # exit()
-    with torch.no_grad():
-        # with model.ema_scope():
-        c = model.cond_stage_model.encode(batch["masked_image"])
-        # print(batch["masked_image"].shape)
-        
-        # print("\nSHAPE OF MASKED", batch["masked_image"].shape)
-        # print("\nSHAPE OF MASK", batch["mask"].shape)
-        # exit()
-        
-        cc = torch.nn.functional.interpolate(batch["mask"],
-                                                size=c.shape[-2:])
-
-        c = torch.cat((c, cc), dim=1)
-
-        # print("SHAPE FED TO INPUT", c.shape)
-        # shape = (c.shape[1]-2,)+c.shape[2:]
-        shape = (3,) + c.shape[2:]
-
-        # print("SHAPE FED TO INPUT", shape)
-        # print("\nSAMPLING\n")
-        
-        samples_ddim, intermediate = ddim_sampler.sample(S=steps,
-                                            conditioning=c,
-                                            batch_size=c.shape[0],
-                                            shape=shape,
-                                            verbose=False)
-        if return_values:
-            return samples_ddim, intermediate
-        else:
-            x_samples_ddim = model.decode_first_stage(samples_ddim)
-
-            image = torch.clamp((batch["image"]+1.0)/2.0,
-                                min=0.0, max=1.0)
-            mask = torch.clamp((batch["mask"]+1.0)/2.0,
-                                min=0.0, max=1.0)
-            predicted_image = torch.clamp((x_samples_ddim+1.0)/2.0,
-                                            min=0.0, max=1.0)
-
-            inpainted = (1-mask)*image+mask*predicted_image
-            inpainted = inpainted.cpu().numpy().transpose(0,2,3,1)[0]*255
-            Image.fromarray(inpainted.astype(np.uint8)).save(out_path)
 
 def seed_everything(seed: int):
     import random, os

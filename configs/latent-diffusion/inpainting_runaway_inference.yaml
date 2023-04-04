@@ -13,8 +13,6 @@ model:
     image_size: 128 # feature map size
     channels: 3
     concat_mode: true # there will be no context_dim specified in unet,
-    # check configs/stable-diffusion/v1-inference.yaml for cross-attention adn context dim
-    #monitor: val/loss
     finetune_keys_to_retain: null
     finetune_training_keys: null 
     monitor: val/loss_simple_ema

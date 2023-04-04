@@ -12,8 +12,7 @@ from ldm.models.diffusion.ddim import DDIMSampler
 from inpaint_utils import seed_everything, make_batch, plot_row_original_mask_output
 from contextlib import suppress
 from torchmetrics.image.lpip_similarity import LPIPS
-from pytorch_fid import fid_score
-import cv2, tqdm
+import tqdm
 seed_everything(42)
 
 
