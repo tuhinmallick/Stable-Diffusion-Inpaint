@@ -153,3 +153,9 @@ Creating a dataset with just three images of office desks with masked keyboard a
       year={2023},
 }
 ```
+
+<p align="center">
+  <a href="https://star-history.com/#lorenzo-stacchio/stable-diffusion_custom_inpaint&Date">
+    <img src="https://api.star-history.com/svg?repos=lorenzo-stacchio/stable-diffusion_custom_inpaint&type=Date" alt="Star History Chart">
+  </a>
+</p>
