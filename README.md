@@ -76,34 +76,6 @@ wget -O models/ldm/inpainting_big/model_compvis.ckpt https://ommer-lab.com/files
 
 N.B. even if the file was provided as a zip file, it corresponds to [a checkpoint file saved with pytorch-lightning](https://github.com/CompVis/stable-diffusion/issues/17#issuecomment-1232756078).
 
-
-Follows the script usage:
-
-```commandline
-usage: inpaint_runaway_correct.py [-h] --indir [INDIR] 
-        --outdir [OUTDIR]
-        --prefix PREFIX --ckpt CKPT --yaml_profile
-        YAML_PROFILE [--steps STEPS] [--ema]
-
-Stable Diffusion Inpainting
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --indir [INDIR]       dir containing image-mask pairs       
-                        (`example.png` and `example_mask.png`)
-  --outdir [OUTDIR]     dir to write results to
-  --prefix PREFIX       path of weights to load
-  --ckpt CKPT           path of weights to load
-  --yaml_profile YAML_PROFILE
-                        yaml file describing the model to initialize
-  --steps STEPS         number of ddim sampling steps
-  --ema                 use ema weights
-```
-
-Note: The inference config should not use EMA checkpoints (do not include `--ema`) if the model was trained on few images. That's because the model won't learn the needed stastistics to inpaint the target dataset.
-
-In case the model was instead trained on a large and varied dataset such as ImageNet, you should use them to avoid influence too much the weights of the model with the last training epochs and so mantaining a regularity in the latent space and on the learned concepts.
-
 #### **Usage example with original weights**
 
 The following command will take all the images in the ```indir``` folder that has a "_mask" pair and generate the inpainted counterparts saving them in ```outdir``` with the model defined in ```yaml_profile``` loading the weights from the ```ckpt``` path. 
@@ -115,6 +87,9 @@ The ```device``` used in such sample is the first indexed gpu.
 python inpaint_inference.py --indir "data/samples/inpainting_original_paper/" --outdir "data/samples/output_inpainting_original_paper/" --ckpt "models/ldm/inpainting_big/model_compvis.ckpt" --yaml_profile "models/ldm/inpainting_big/config.yaml" --device cuda:0 --prefix "sd_examples"
 ```
 
+Please note that, the inference script should not use EMA checkpoints (do not include `--ema`) if the model was trained on few images. That's because the model won't learn the needed stastistics to inpaint the target dataset.
+
+In case the model was instead trained on a large and varied dataset such as ImageNet, you should use them to avoid influence too much the weights of the model with the last training epochs and so mantaining a regularity in the latent space and on the learned concepts.
 
 ### **Reference Training Script**
 
