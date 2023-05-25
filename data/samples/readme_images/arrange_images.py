@@ -10,9 +10,10 @@ image_radixes = [".".join(x.split(".")[:-1]) for x in glob.glob(input_images_fol
 # random images
 n_samples = 3
 selected_images = random.sample(image_radixes, k=n_samples)
-
+print(selected_images)
 # CREATE TRIPLETS
 triplets_to_show = [(x + ".png", x + "_mask.png", glob.glob(output_images_folder + os.path.basename(x).split(".")[-1] + "*.png")[0]) for x in selected_images]
+# triplets_to_show = [glob.glob(output_images_folder + os.path.basename(x).split(".")[-1] + "*.png")[0] for x in selected_images]
 
 print(triplets_to_show)
 
@@ -43,4 +44,4 @@ for row in range(num_rows):
         canvas[y:y+image_size, x:x+image_size, :] = cv2.addWeighted(canvas[y:y+image_size, x:x+image_size, :], 0.5, img, 0.5, 0)
 
 
-cv2.imwrite("final.jpg", canvas)
+cv2.imwrite("show_samples.jpg", canvas)

@@ -71,7 +71,7 @@ For this use case, you should need to specify a ```path/to/input_folder/``` that
 To have meaningful results, you should download inpainting weights provided by the authors as baseline with:
 
 ```
-wget -O models/ldm/inpainting_big/model_compvis.ckpt https://ommer-lab.com/files/latent-diffusion/inpainting_big.zip
+wget -O models/ldm/inpainting_big/model_compvis.ckpt https://ommer-lab.com/files/latent-diffusion/inpainting_big.zip --no-check-certificate
 ```
 
 N.B. even if the file was provided as a zip file, it corresponds to [a checkpoint file saved with pytorch-lightning](https://github.com/CompVis/stable-diffusion/issues/17#issuecomment-1232756078).
@@ -112,9 +112,8 @@ The ```device``` used in such sample is the first indexed gpu.
 
 
 ```
-python scripts/inpaint_runaway_correct.py --indir "data/samples/inpainting_original_paper/" --outdir "data/samples/output_inpainting_original_paper/" --ckpt "models/ldm/inpainting_big/model_compvis.ckpt" --yaml_profile "configs/latent-diffusion/inpainting_runaway_inference.yaml" --device cuda:0 --prefix "sd_examples"
+python inpaint_inference.py --indir "data/samples/inpainting_original_paper/" --outdir "data/samples/output_inpainting_original_paper/" --ckpt "models/ldm/inpainting_big/model_compvis.ckpt" --yaml_profile "models/ldm/inpainting_big/config.yaml" --device cuda:0 --prefix "sd_examples"
 ```
-
 
 
 ### **Reference Training Script**
@@ -130,8 +129,9 @@ In this configuration, the universal autoencoder was frozen and was used to cond
 The definition of the DataLoader used to train the inpainting model is defined in ```ldm/data/inpainting.py``` and was derived by the author's [inference script](https://github.com/CompVis/stable-diffusion/blob/main/scripts/inpaint.py) and several other resources like [this](https://github.com/huggingface/diffusers/tree/main/examples/research_projects/dreambooth_inpaint).
 
 Both the training and validation dataloader, expect a csv file with three columns:  `image_path`,`mask_path`,`partition`.
+You can find a sample in `data/INPAINTING/example_df.csv` where one sample is used both for train and validation, just to show the overfit capabilities of SD and to ease the learning process.
 
-After that, you can create a custom configuration `*.yaml` file, and specify the paths under the data key (check the [default configuration](configs/latent-diffusion/inpainting_runaway_customTEMPLATE.yaml)). 
+After that, you can create a custom configuration `*.yaml` file, and specify the paths under the data key (check the [default configuration](configs/latent-diffusion/inpainting_example_overfit.yaml)). 
 
 #### **Example of training in a small custom dataset**
 ```
