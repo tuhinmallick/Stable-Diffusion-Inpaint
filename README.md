@@ -135,7 +135,7 @@ After that, you can create a custom configuration `*.yaml` file, and specify the
 
 #### **Example of training in a small custom dataset**
 ```
-python3 main_inpainting.py --train --name  custom_training --base  configs/latent-diffusion/inpainting_runaway_customTEMPLATE.yaml  --gpus 1,   --seed  42
+python3 main_inpainting.py --train --name  custom_training --base  configs/latent-diffusion/inpainting_example_overfit.yaml  --gpus 1,   --seed  42
 ```
 
 #### **Custom training results**

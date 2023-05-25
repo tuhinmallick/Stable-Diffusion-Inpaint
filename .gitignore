@@ -32,3 +32,4 @@ data/samples/Car_custom/*
 data/modules/DYNAFILL/*.png
 data/samples/Car_custom2/*
 scripts/outputs/*
+ldm/data/test_loader_dynafill_rearrange/*

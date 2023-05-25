@@ -98,19 +98,17 @@ class InpaintingBase(Dataset):
 
         for k in batch:
             batch[k] = batch[k]*2.0-1.0
+            # print(batch[k].shape)
             if k=="mask":
                 batch[k] = torch.squeeze(batch[k], dim=1) # we are in get item here, so one at a time
             else:
                 batch[k] = torch.squeeze(batch[k], dim=0)
+            # print(batch[k].shape)
+            batch[k] = rearrange(batch[k], 'c h w -> h w c')
         return batch
 
     def __getitem__(self, i):
-        # example = dict((k, self.labels[k][i]) for k in self.labels)
-        # image,masked_image, mask = self._transform_and_normalize(example["file_path_"],example["file_path_mask_"])
-        # example["image"] = image
-        # example["masked_image"] = masked_image
-        # example["mask"] = mask
-        
+    
         example2 = dict((k, self.labels[k][i]) for k in self.labels)
 
         add_dict = self._transform_and_normalize_inference(example2["file_path_"],example2["file_path_mask_"], resize_to=self.size)
@@ -172,15 +170,14 @@ if __name__=="__main__":
             # print(batch[k].shape)               
             image_de = batch[k]
             image_de = (image_de + 1)/2
-
+            image_de = rearrange(image_de, 'b h w c ->b c h w')
             if k=="mask":
                 image_de = de_transform_mask(image_de)
             else:
                 image_de = de_transform(image_de)
-            
+            # 'b c h w ->b h w c'
 
             rgb_img = (image_de).type(torch.uint8).squeeze(0)
-            # print(rgb_img.shape)
             
             img = transforms.ToPILImage()(rgb_img)  
             # print(img.size)

@@ -11,7 +11,7 @@ model:
     first_stage_key: image
     cond_stage_key: masked_image # 4 channels
     cond_stage_trainable: false 
-    # image_size: 128 # feature map size for 512x512 images --> NOT USED
+    image_size: 128 # feature map size for 512x512 images
     channels: 3
     concat_mode: true # there will be no context_dim specified in unet,
     monitor: val/loss_simple_ema
@@ -65,7 +65,7 @@ model:
     cond_stage_config: __is_first_stage__
 
 data:
-  target: main.DataModuleFromConfig
+  target: main_inpainting.DataModuleFromConfig
   params:
     batch_size: 2
     num_workers: 5
@@ -79,7 +79,7 @@ data:
     validation:
       target: ldm.data.inpainting_dataset.InpaintingValidation
       params:
-       csv_file: data/INPAINTING/example_df.csv
+        csv_file: data/INPAINTING/example_df.csv
         data_root: data/INPAINTING/custom_inpainting
         size: 512
 

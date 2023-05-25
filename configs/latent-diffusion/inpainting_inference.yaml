@@ -8,8 +8,8 @@ model:
     timesteps: 1000 # per overfittare tutti i livelli di rumore almeno 500 epoche
     first_stage_key: image
     cond_stage_key: masked_image # 4 channels
-    cond_stage_trainable: false 
-    # image_size: 128 #--> unused
+    cond_stage_trainable: false
+    image_size: 128 #--> unused
     channels: 3
     concat_mode: true # there will be no context_dim specified in unet,
     finetune_keys_to_retain: null
