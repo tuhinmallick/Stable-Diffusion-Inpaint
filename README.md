@@ -14,11 +14,6 @@ In this project, I focused on providing a good codebase to easily fine-tune or t
 
 ![Inpainting Samples](data/samples/readme_images/show_samples.jpg)
 
-# INITIAL DISCLAIMER
-This repository is meant to be working only on certain simple use cases and gpus.ù
-Use just what is specified in the following examples.
-
-
 ## Original paper
 [**High-Resolution Image Synthesis with Latent Diffusion Models**](https://ommer-lab.com/research/latent-diffusion-models/)<br/>
 [Robin Rombach](https://github.com/rromb)\*,
