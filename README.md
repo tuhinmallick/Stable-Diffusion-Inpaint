@@ -30,7 +30,7 @@ _[CVPR '22 Oral](https://openaccess.thecvf.com/content/CVPR2022/html/Rombach_Hig
 
 ### Pip
 
-Python `3.6.8` environment built with pip for `CUDA 10.1` and tested on a `Tesla V100` gpu (Centos 7 OS).
+Python [`3.6.8`](https://www.python.org/downloads/release/python-368/) environment built with pip for `CUDA 10.1` and tested on a `Tesla V100` gpu (Centos 7 OS).
 
 ```
 pip install -r requirements.txt
@@ -103,6 +103,12 @@ You can find a sample in `data/INPAINTING/example_df.csv` where one sample is us
 
 After that, you can create a custom configuration `*.yaml` file, and specify the paths under the data key (check the [default configuration](configs/latent-diffusion/inpainting_example_overfit.yaml)). 
 
+#### (Optional) Generating LaMA irregular masks
+
+In case you don't possess the binary masks
+or you want to generate random ones, you can now use LaMa irregular mask generation for your image dataset following the instruction reported in the [scripts\generate_llama_mask\README.md](scripts\generate_llama_mask\README.md). 
+
+
 #### **Example of training in a small custom dataset**
 ```
 python3 main_inpainting.py --train --name  custom_training --base  configs/latent-diffusion/inpainting_example_overfit.yaml  --gpus 1,   --seed  42
@@ -113,6 +119,10 @@ python3 main_inpainting.py --train --name  custom_training --base  configs/laten
 Creating a dataset with just three images of office desks with masked keyboard and mouse, I obtained the following results from fine-tuning the entire network (first row input, second row learned reconstruction over 256 epochs):
 
 ![Diffusion Samples](data/samples/readme_images/training.jpg)
+
+
+
+
 
 ## BibTeX
 
