@@ -6,11 +6,7 @@
 </p>
 
 [Stable Diffusion](#stable-diffusion-v1) is a latent text-to-image diffusion
-model.
-Thanks to a generous compute donation from [Stability AI](https://stability.ai/) and support from [LAION](https://laion.ai/), the authors were able to train a Latent Diffusion Model on 512x512 images from a subset of the [LAION-5B](https://laion.ai/blog/laion-5b/) database. 
-
-The authors trained these model for a variety of tasks, including the Inpainting.
-In this project, I focused on providing a good codebase to easily fine-tune or training from scratch the Inpainting architecture for a target dataset.
+model. The authors trained models for a variety of tasks, including Inpainting. In this project, I focused on providing a good codebase to easily fine-tune or train from scratch the Inpainting architecture for a target dataset.
 
 ![Inpainting Samples](data/samples/readme_images/show_samples.jpg)
 
@@ -36,7 +32,7 @@ Python [`3.6.8`](https://www.python.org/downloads/release/python-368/) environme
 pip install -r requirements.txt
 ```
 
-### Conda enviroment of the [original repo](https://github.com/CompVis/stable-diffusion#requirements)
+### Conda environment of the [original repo](https://github.com/CompVis/stable-diffusion#requirements)
 A suitable [conda](https://conda.io/) environment named `ldm` can be created
 and activated with:
 
@@ -55,26 +51,26 @@ pip install -e .
 
 ## Inpainting with Stable Diffusion
 
-In this project, I focused on the inpainting task, providing a good codebase to easily fine-tune or training the model from scratch.
+In this project, I focused on the inpainting task, providing a good codebase to easily fine-tune or train the model from scratch.
 
 ### **Reference Sampling Script**
 
 Here is provided a simple reference sampling script for inpainting.
 
-For this use case, you should need to specify a ```path/to/input_folder/``` that contains image paired with their mask (e.g., image1.png - image1_mask.png) and a ```path/to/output_folder/``` where the generated images will be saved.
+For this use case, you should need to specify a ```path/to/input_folder/``` that contains an image paired with their mask (e.g., image1.png - image1_mask.png) and a ```path/to/output_folder/``` where the generated images will be saved.
 
-To have meaningful results, you should download inpainting weights provided by the authors as baseline with:
+To have meaningful results, you should download inpainting weights provided by the authors as a baseline with:
 
 ```
 wget -O models/ldm/inpainting_big/model_compvis.ckpt https://ommer-lab.com/files/latent-diffusion/inpainting_big.zip --no-check-certificate
 ```
 
-N.B. even if the file was provided as a zip file, it corresponds to [a checkpoint file saved with pytorch-lightning](https://github.com/CompVis/stable-diffusion/issues/17#issuecomment-1232756078).
+N.B. Even if the file was provided as a zip file, it corresponds to [a checkpoint file saved with pytorch-lightning](https://github.com/CompVis/stable-diffusion/issues/17#issuecomment-1232756078).
 
 #### **Usage example with original weights**
 
 The following command will take all the images in the ```indir``` folder that has a "_mask" pair and generate the inpainted counterparts saving them in ```outdir``` with the model defined in ```yaml_profile``` loading the weights from the ```ckpt``` path. 
-Each of the image filepaths will be prefixed with ```prefix```.
+Each of the image file paths will be prefixed with ```prefix```.
 The ```device``` used in such sample is the first indexed gpu.
 
 
@@ -82,9 +78,9 @@ The ```device``` used in such sample is the first indexed gpu.
 python inpaint_inference.py --indir "data/samples/inpainting_original_paper/" --outdir "data/samples/output_inpainting_original_paper/" --ckpt "models/ldm/inpainting_big/model_compvis.ckpt" --yaml_profile "models/ldm/inpainting_big/config.yaml" --device cuda:0 --prefix "sd_examples"
 ```
 
-Please note that, the inference script should not use EMA checkpoints (do not include `--ema`) if the model was trained on few images. That's because the model won't learn the needed stastistics to inpaint the target dataset.
+Please note that the inference script should not use EMA checkpoints (do not include `--ema`) if the model was trained on a few images. That's because the model won't learn the needed statistics to inpaint the target dataset.
 
-In case the model was instead trained on a large and varied dataset such as ImageNet, you should use them to avoid influence too much the weights of the model with the last training epochs and so mantaining a regularity in the latent space and on the learned concepts.
+In case the model was instead trained on a large and varied dataset such as ImageNet, you should use them to avoid influencing too much the weights of the model with the last training epochs and so maintaining a regularity in the latent space and on the learned concepts.
 
 ### **Reference Training Script**
 
@@ -92,13 +88,13 @@ This training script was put to good use to overfit stable diffusion, over the r
 
 In particular, the model aims at minimizing the perceptual loss to reconstruct a keyboard and a mouse in a classical office setting.
 
-In this configuration, the universal autoencoder was frozen and was used to conditioning the network denoising process with the concatenation method. So the only section trained was the backbone diffusion model (i.e., the U-NET). 
+In this configuration, the universal autoencoder was frozen and was used to condition the network denoising process with the concatenation method. So the only section trained was the backbone diffusion model (i.e., the U-NET). 
 
 #### **Create a custom dataset**
 
 The definition of the DataLoader used to train the inpainting model is defined in ```ldm/data/inpainting.py``` and was derived by the author's [inference script](https://github.com/CompVis/stable-diffusion/blob/main/scripts/inpaint.py) and several other resources like [this](https://github.com/huggingface/diffusers/tree/main/examples/research_projects/dreambooth_inpaint).
 
-Both the training and validation dataloader, expect a csv file with three columns:  `image_path`,`mask_path`,`partition`.
+Both the training and validation data loader, expect a CSV file with three columns:  `image_path`,`mask_path`,`partition`.
 You can find a sample in `data/INPAINTING/example_df.csv` where one sample is used both for train and validation, just to show the overfit capabilities of SD and to ease the learning process.
 
 After that, you can create a custom configuration `*.yaml` file, and specify the paths under the data key (check the [default configuration](configs/latent-diffusion/inpainting_example_overfit.yaml)). 
@@ -116,7 +112,7 @@ python3 main_inpainting.py --train --name  custom_training --base  configs/laten
 
 #### **Custom training results**
 
-Creating a dataset with just three images of office desks with masked keyboard and mouse, I obtained the following results from fine-tuning the entire network (first row input, second row learned reconstruction over 256 epochs):
+Creating a dataset with just three images of office desks with masked keyboard and mouse, I obtained the following results from fine-tuning the entire network (first-row input, second row learned reconstruction over 256 epochs):
 
 ![Diffusion Samples](data/samples/readme_images/training.jpg)
 
