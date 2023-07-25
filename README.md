@@ -2,7 +2,8 @@
 
 <p align="right">
 <a href="https://pytorch.org/"><img src="https://img.shields.io/badge/PyTorch-%23EE4C2C.svg?style=for-the-badge&logo=PyTorch&logoColor=white" alt="pytorch"></a>
-<a href="https://github.com/lorenzo-stacchio/stable-diffusion_custom_inpaint"><img src="https://visitor-badge.glitch.me/badge?page_id=lorenzo-stacchio.stable-diffusion_custom_inpaint" alt="visitors"></a>
+<a href="https://pytorch.org/"><img src="https://api.visitorbadge.io/api/visitors?path=https%3A%2F%2Fgithub.com%2Florenzo-stacchio%2FStable-Diffusion-Inpaint&label=Visitors&labelColor=%2337d67a&countColor=%23555555"></a>
+<!-- <a href="https://github.com/lorenzo-stacchio/Stable-Diffusion-Inpaint"><img src="https://visitor-badge.glitch.me/badge?page_id=lorenzo-stacchio.stable-diffusion-inpaint" alt="visitors"></a> -->
 </p>
 
 [Stable Diffusion](#stable-diffusion-v1) is a latent text-to-image diffusion
