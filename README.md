@@ -103,10 +103,10 @@ You can find a sample in `data/INPAINTING/example_df.csv` where one sample is us
 
 After that, you can create a custom configuration `*.yaml` file, and specify the paths under the data key (check the [default configuration](configs/latent-diffusion/inpainting_example_overfit.yaml)). 
 
-#### (Optional) Generating LaMA irregular masks
+##### (Optional) Generating LaMA irregular masks
 
 In case you don't possess the binary masks
-or you want to generate random ones, you can now use LaMa irregular mask generation for your image dataset following the instruction reported in the [scripts\generate_llama_mask\README.md](scripts\generate_llama_mask\README.md). 
+or you want to generate random ones, you can now use LaMa irregular mask generation for your image dataset following the instruction reported in the [scripts/generate_llama_mask/README.md](scripts/generate_llama_mask/README.md). 
 
 
 #### **Example of training in a small custom dataset**
