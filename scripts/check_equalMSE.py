@@ -4,9 +4,7 @@ import cv2
 from skimage.metrics import structural_similarity
 
 def are_same_image(image1, image2):
-    if np.sum(np.array(ImageChops.difference(image1, image2).getdata())) == 0:
-        return True
-    return False
+    return np.sum(np.array(ImageChops.difference(image1, image2).getdata())) == 0
 
 
 # Load the images

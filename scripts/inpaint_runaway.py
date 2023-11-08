@@ -101,7 +101,7 @@ if __name__ == "__main__":
 
     # # print(list(dict_old_weights.keys()))
     # print(len(dict_old_weights))
-    
+
     # dict_new_weights = torch.load("logs/2023-02-08NODECAY_inpainting_runaway/checkpoints/last.ckpt")["state_dict"]
     # print(len(dict_new_weights))
     # validate_state_dicts(dict_old_weights, dict_new_weights)
@@ -121,7 +121,7 @@ if __name__ == "__main__":
     # dict_old_weights = torch.load("models/ldm/inpainting_big/model_compvis.ckpt")["state_dict"]
     # # print(list(dict_old_weights.keys()))
     # print(len(dict_old_weights))
-    
+
     # dict_new_weights = torch.load("logs/2023-02-07T13-57-20_inpainting_runaway/checkpoints/epoch=000002.ckpt")["state_dict"]
     # # validate_state_dicts(dict_old_weights, dict_new_weights)
     # print(len(dict_new_weights))
@@ -129,11 +129,11 @@ if __name__ == "__main__":
 
     # model.load_state_dict(dict_old_weights,
     #                         strict=True)
-    
+
     # # NUOVI PESI TRAINATI PER UNA EPOCA CHE ORA HANNO ANCHE I PESI DDIM 
     # model.load_state_dict(dict_new_weights,
     #                         strict=True)
-    
+
 
     # CON STRICT TRUE DA FALSE SE SI PROVA A CARICARE I PESI VECCHI CON QUALSIASI CONFIGURAZIONE DEL MODELLO PERCHE' MANCANO I PESI DEL DDIM, CON FALSE NO PERCHE' SEMPLICEMENTE NON LI CARICA
     # model.load_state_dict(dict_old_weights,
@@ -145,7 +145,7 @@ if __name__ == "__main__":
     print("Model loaded")
 
     #model = torch.load("models/ldm/inpainting_big/archive/data.pkl")
-    
+
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     model = model.to(device)
     # with open("model_structure.txt", "w") as f:
@@ -158,21 +158,21 @@ if __name__ == "__main__":
     os.makedirs(opt.outdir, exist_ok=True)
     with torch.no_grad():
         with model.ema_scope():
+            texture = "data/INPAINTING/custom_inpainting/texture_background.png"
             for image, mask in tqdm(zip(images, masks)):
-                texture = "data/INPAINTING/custom_inpainting/texture_background.png"
                 # prefix = os.path.basename(texture).split(".")[0]
-                outpath = os.path.join(opt.outdir, "wrong"  + os.path.split(image)[1])
+                outpath = os.path.join(opt.outdir, f"wrong{os.path.split(image)[1]}")
 
                 batch = make_batch(image, mask, texture, device=device)
-                
+
                 # encode masked image and concat downsampled mask
                 c = model.cond_stage_model.encode(batch["masked_image"])
                 # print(batch["masked_image"].shape)
-                
+
                 # print("\nSHAPE OF MASKED", batch["masked_image"].shape)
                 # print("\nSHAPE OF MASK", batch["mask"].shape)
                 # exit()
-                
+
                 cc = torch.nn.functional.interpolate(batch["mask"],
                                                      size=c.shape[-2:])
 
@@ -184,7 +184,7 @@ if __name__ == "__main__":
 
                 # print("SHAPE FED TO INPUT", shape)
                 # print("\nSAMPLING\n")
-                
+
                 samples_ddim, _ = sampler.sample(S=opt.steps,
                                                  conditioning=c,
                                                  batch_size=c.shape[0],

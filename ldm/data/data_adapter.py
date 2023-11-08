@@ -62,9 +62,10 @@ class DataModuleFromConfig(pl.LightningDataModule):
             instantiate_from_config(data_cfg)
 
     def setup(self, stage=None):
-        self.datasets = dict(
-            (k, instantiate_from_config(self.dataset_configs[k]))
-            for k in self.dataset_configs)
+        self.datasets = {
+            k: instantiate_from_config(self.dataset_configs[k])
+            for k in self.dataset_configs
+        }
         if self.wrap:
             for k in self.datasets:
                 self.datasets[k] = WrappedDataset(self.datasets[k])
@@ -75,9 +76,13 @@ class DataModuleFromConfig(pl.LightningDataModule):
             init_fn = worker_init_fn
         else:
             init_fn = None
-        return DataLoader(self.datasets["train"], batch_size=self.batch_size,
-                          num_workers=self.num_workers, shuffle=False if is_iterable_dataset else True,
-                          worker_init_fn=init_fn)
+        return DataLoader(
+            self.datasets["train"],
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            shuffle=not is_iterable_dataset,
+            worker_init_fn=init_fn,
+        )
 
     def _val_dataloader(self, shuffle=False):
         if isinstance(self.datasets['validation'], Txt2ImgIterableBaseDataset) or self.use_worker_init_fn:

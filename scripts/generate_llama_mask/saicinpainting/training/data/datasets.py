@@ -83,11 +83,7 @@ class ImgSegmentationDataset(Dataset):
         img = np.transpose(img, (2, 0, 1))
         mask = self.mask_generator(img)
         segm, segm_classes= self.load_semantic_segm(path)
-        result = dict(image=img,
-                      mask=mask,
-                      segm=segm,
-                      segm_classes=segm_classes)
-        return result
+        return dict(image=img, mask=mask, segm=segm, segm_classes=segm_classes)
 
     def load_semantic_segm(self, img_path):
         segm_path = img_path.replace(self.indir, self.segm_indir).replace(".jpg", ".png")
@@ -242,8 +238,7 @@ def make_default_train_dataloader(indir, kind='default', out_size=512, mask_gen_
         with open_dict(dataloader_kwargs):
             del dataloader_kwargs['shuffle']
 
-    dataloader = DataLoader(dataset, **dataloader_kwargs)
-    return dataloader
+    return DataLoader(dataset, **dataloader_kwargs)
 
 
 def make_default_val_dataset(indir, kind='default', out_size=512, transform_variant='default', **kwargs):
@@ -285,8 +280,7 @@ def make_default_val_dataloader(*args, dataloader_kwargs=None, **kwargs):
 
     if dataloader_kwargs is None:
         dataloader_kwargs = {}
-    dataloader = DataLoader(dataset, **dataloader_kwargs)
-    return dataloader
+    return DataLoader(dataset, **dataloader_kwargs)
 
 
 def make_constant_area_crop_params(img_height, img_width, min_size=128, max_size=512, area=256*256, round_to_mod=16):

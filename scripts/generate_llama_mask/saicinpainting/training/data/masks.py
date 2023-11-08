@@ -29,7 +29,7 @@ def make_random_irregular_mask(shape, max_angle=4, max_len=60, max_width=20, min
     for i in range(times):
         start_x = np.random.randint(width)
         start_y = np.random.randint(height)
-        for j in range(1 + np.random.randint(5)):
+        for _ in range(1 + np.random.randint(5)):
             angle = 0.01 + np.random.randint(max_angle)
             if i % 2 == 0:
                 angle = 2 * 3.1415926 - angle
@@ -74,7 +74,7 @@ def make_random_rectangle_mask(shape, margin=10, bbox_min_size=30, bbox_max_size
     mask = np.zeros((height, width), np.float32)
     bbox_max_size = min(bbox_max_size, height - margin * 2, width - margin * 2)
     times = np.random.randint(min_times, max_times + 1)
-    for i in range(times):
+    for _ in range(times):
         box_width = np.random.randint(bbox_min_size, bbox_max_size)
         box_height = np.random.randint(bbox_min_size, bbox_max_size)
         start_x = np.random.randint(margin, width - margin - box_width + 1)
@@ -186,7 +186,16 @@ class OutpaintingMaskGenerator:
 
         assert self.min_padding_percent <= self.max_padding_percent
         assert self.max_padding_percent > 0
-        assert len([x for x in [self.min_padding_percent, self.max_padding_percent] if (x>=0 and x<=1)]) == 2, f"Padding percentage should be in [0,1]"
+        assert (
+            len(
+                [
+                    x
+                    for x in [self.min_padding_percent, self.max_padding_percent]
+                    if (x >= 0 and x <= 1)
+                ]
+            )
+            == 2
+        ), "Padding percentage should be in [0,1]"
         assert sum(self.probs) > 0, f"At least one of the padding probs should be greater than 0 - {self.probs}"
         assert len([x for x in self.probs if (x >= 0) and (x <= 1)]) == 4, f"At least one of padding probs is not in [0,1] - {self.probs}"
         if len([x for x in self.probs if x > 0]) == 1:
@@ -206,8 +215,7 @@ class OutpaintingMaskGenerator:
     def _img2rs(img):
         arr = np.ascontiguousarray(img.astype(np.uint8))
         str_hash = hashlib.sha1(arr).hexdigest()
-        res = hash(str_hash)%(2**32)
-        return res
+        return hash(str_hash)%(2**32)
 
     def __call__(self, img, iter_i=None, raw_image=None):
         c, self.img_h, self.img_w = img.shape
@@ -215,7 +223,7 @@ class OutpaintingMaskGenerator:
         at_least_one_mask_applied = False
 
         if self.is_fixed_randomness:
-            assert raw_image is not None, f"Cant calculate hash on raw_image=None"
+            assert raw_image is not None, "Cant calculate hash on raw_image=None"
             rs = self._img2rs(raw_image)
             self.rnd = np.random.RandomState(rs)
         else:
@@ -262,10 +270,7 @@ class MixedMaskGenerator:
 
         if irregular_proba > 0:
             self.probas.append(irregular_proba)
-            if irregular_kwargs is None:
-                irregular_kwargs = {}
-            else:
-                irregular_kwargs = dict(irregular_kwargs)
+            irregular_kwargs = {} if irregular_kwargs is None else dict(irregular_kwargs)
             irregular_kwargs['draw_method'] = DrawMethod.LINE
             self.gens.append(RandomIrregularMaskGenerator(**irregular_kwargs))
 
@@ -283,10 +288,7 @@ class MixedMaskGenerator:
 
         if squares_proba > 0:
             self.probas.append(squares_proba)
-            if squares_kwargs is None:
-                squares_kwargs = {}
-            else:
-                squares_kwargs = dict(squares_kwargs)
+            squares_kwargs = {} if squares_kwargs is None else dict(squares_kwargs)
             squares_kwargs['draw_method'] = DrawMethod.SQUARE
             self.gens.append(RandomIrregularMaskGenerator(**squares_kwargs))
 

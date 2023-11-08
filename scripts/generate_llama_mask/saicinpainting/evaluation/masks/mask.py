@@ -229,10 +229,7 @@ class SegmentationMask:
 
     def _augmentation_params(self):
         scaling_factor = np.random.uniform(1 - self.max_scale_change, 1 + self.max_scale_change)
-        if self.horizontal_flip:
-            horizontal_flip = bool(np.random.choice(2))
-        else:
-            horizontal_flip = False
+        horizontal_flip = bool(np.random.choice(2)) if self.horizontal_flip else False
         vertical_shift = np.random.uniform(-self.max_vertical_shift, self.max_vertical_shift)
 
         return {
@@ -242,10 +239,13 @@ class SegmentationMask:
         }
 
     def _get_intersection(self, mask_array, mask_object):
-        intersection = mask_array[
-            mask_object.up:mask_object.down, mask_object.left:mask_object.right
-        ] & mask_object.mask
-        return intersection
+        return (
+            mask_array[
+                mask_object.up : mask_object.down,
+                mask_object.left : mask_object.right,
+            ]
+            & mask_object.mask
+        )
 
     def _check_masks_intersection(self, aug_mask, total_mask_area, prev_masks):
         for existing_mask in prev_masks:
@@ -277,7 +277,7 @@ class SegmentationMask:
         # to fix the case when resizing gives mask_object consisting only of False
         scaling_factor_lower_bound = 0.
 
-        for var_idx in range(self.num_variants_per_mask):
+        for _ in range(self.num_variants_per_mask):
             # Obtaining augmentation parameters and applying them to the downscaled mask_object
             augmentation_params = self._augmentation_params()
             augmentation_params["scaling_factor"] = min([
@@ -333,9 +333,9 @@ class SegmentationMask:
                 aug_mask_left.crop_to_canvas(inplace=True)
 
                 prev_masks = [mask] + chosen_masks
-                is_mask_suitable = self._check_masks_intersection(aug_mask_left, total_aug_area, prev_masks) & \
-                                   self._check_foreground_intersection(aug_mask_left, foreground)
-                if is_mask_suitable:
+                if is_mask_suitable := self._check_masks_intersection(
+                    aug_mask_left, total_aug_area, prev_masks
+                ) & self._check_foreground_intersection(aug_mask_left, foreground):
                     aug_draw = aug_mask_left.restore_full_mask()
                     chosen_masks.append(aug_draw)
                     augmentation_params["horizontal_shift"] = horizontal_shift / aug_mask_left.width

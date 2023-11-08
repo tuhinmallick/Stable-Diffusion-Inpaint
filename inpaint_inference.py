@@ -18,7 +18,7 @@ seed_everything(42)
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description="Stable Diffusion Inpainting")
-    
+
     parser.add_argument(
         "--indir",
         type=str,
@@ -26,7 +26,7 @@ if __name__ == "__main__":
         help="dir containing image-mask pairs (`example.png` and `example_mask.png`)",
         required=True
     )
-    
+
     parser.add_argument(
         "--outdir",
         type=str,
@@ -34,7 +34,7 @@ if __name__ == "__main__":
         help="dir to write results to",
         required=True
     )
-    
+
     parser.add_argument(
         "--prefix",
         type=str,
@@ -42,14 +42,14 @@ if __name__ == "__main__":
         help="path of weights to load",
         required=True        
     )
-    
+
     parser.add_argument(
         "--ckpt",
         type=str,
         help="path of weights to load",
         required=True        
     )
-    
+
     parser.add_argument(
         "--yaml_profile",
         type=str,
@@ -64,21 +64,21 @@ if __name__ == "__main__":
         default = 512,
         help="resize to ",
     )
-      
+
     parser.add_argument(
         "--device",
         type=str,
         default="cpu",
         help="specify the device for inference (cpu, cuda, cuda:x)",
     )
-      
+
     parser.add_argument(
         "--steps",
         type=int,
         default=50,
         help="number of ddim sampling steps",
     )
-    
+
     parser.add_argument(
         "--ema",
         action='store_true',
@@ -98,28 +98,31 @@ if __name__ == "__main__":
     model.load_state_dict(torch.load(opt.ckpt)["state_dict"],
                             strict=False)
 
-    print("Loading modeling from %s" % opt.ckpt)
-    
+    print(f"Loading modeling from {opt.ckpt}")
+
     device = torch.device(opt.device) if torch.cuda.is_available() and opt.device is not "cpu" else torch.device("cpu")
-    
+
     model = model.to(device)
 
     sampler = DDIMSampler(model)
 
     os.makedirs(opt.outdir, exist_ok=True)
-    
+
     scope = model.ema_scope if opt.ema else suppress
     ema_prefix = "EMA" if opt.ema else "NOT_EMA"
-    
+
     with torch.no_grad():
         with scope("Sampling"):
             for image, mask in tqdm(zip(images, masks)):
-                outpath = os.path.join(opt.outdir, "%s_%s_%s_%s.png" % (os.path.split(image)[1].split(".")[0], opt.prefix, ema_prefix, os.path.basename(opt.ckpt)))
+                outpath = os.path.join(
+                    opt.outdir,
+                    f'{os.path.split(image)[1].split(".")[0]}_{opt.prefix}_{ema_prefix}_{os.path.basename(opt.ckpt)}.png',
+                )
 
                 batch = make_batch(image, mask, device=device, resize_to=opt.resize)
-                
+
                 c_masked = model.cond_stage_model.encode(batch["masked_image"])
-                                
+
                 cc_mask = torch.nn.functional.interpolate(batch["mask"],
                                                         size=c_masked.shape[-2:])
 
@@ -127,7 +130,7 @@ if __name__ == "__main__":
 
                 shape = (3,) + c_masked.shape[2:] # same
 
-                
+
                 samples_ddim, _ = sampler.sample(S=opt.steps,
                                                     conditioning=c,
                                                     batch_size=c.shape[0],
@@ -140,25 +143,25 @@ if __name__ == "__main__":
                                     min=0.0, max=1.0)
                 mask = torch.clamp((batch["mask"]+1.0)/2.0,
                                     min=0.0, max=1.0)
-                
+
                 masked_image = torch.clamp((batch["masked_image"]+1.0)/2.0,
                                     min=0.0, max=1.0)
-                
+
                 predicted_image = torch.clamp((x_samples_ddim+1.0)/2.0,
                                                 min=0.0, max=1.0)
 
 
                 inpainted = (1-mask)*image+mask*predicted_image
-                
+
                 inpainted = inpainted.cpu().numpy().transpose(0,2,3,1)[0]*255
-                
+
                 predicted_image = predicted_image.cpu().numpy().transpose(0,2,3,1)[0]*255
-                print("Save in %s" % outpath)
-                
+                print(f"Save in {outpath}")
+
                 mask = mask.cpu().numpy().transpose(0,2,3,1)[0]*255
                 image = image.cpu().numpy().transpose(0,2,3,1)[0]*255
                 masked_image = masked_image.cpu().numpy().transpose(0,2,3,1)[0]*255
-                
+
                 # image_to_print = plot_row_original_mask_output([{"masked_image":masked_image, "image":image, "predicted_image":predicted_image}], image_size = 512)
                 # Image.fromarray(image_to_print.astype(np.uint8)).save(outpath)
                 Image.fromarray(predicted_image.astype(np.uint8)).save(outpath)

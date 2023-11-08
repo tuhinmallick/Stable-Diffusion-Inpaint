@@ -22,7 +22,7 @@ class InpaintingBase(Dataset):
         self.csv_df = pd.read_csv(csv_file)
         self.csv_df = self.csv_df[self.csv_df["partition"]==partition] # filter partition
         self._length = len(self.csv_df)
-        
+
         self.data_root = data_root
         self.size = size
         self.transform = None
@@ -37,12 +37,14 @@ class InpaintingBase(Dataset):
         self.image_paths = self.csv_df["image_path"]
         self.mask_image = self.csv_df["mask_path"]
         self.labels = {
-            "relative_file_path_": [l for l in self.image_paths],
-            "file_path_": [os.path.join(self.data_root, l)
-                           for l in self.image_paths],
-            "relative_file_path_mask_": [l for l in self.mask_image],
-            "file_path_mask_": [os.path.join(self.data_root, l)
-                           for l in self.mask_image],
+            "relative_file_path_": list(self.image_paths),
+            "file_path_": [
+                os.path.join(self.data_root, l) for l in self.image_paths
+            ],
+            "relative_file_path_mask_": list(self.mask_image),
+            "file_path_mask_": [
+                os.path.join(self.data_root, l) for l in self.mask_image
+            ],
         }
 
     def __len__(self):
@@ -108,11 +110,11 @@ class InpaintingBase(Dataset):
         return batch
 
     def __getitem__(self, i):
-    
-        example2 = dict((k, self.labels[k][i]) for k in self.labels)
+
+        example2 = {k: self.labels[k][i] for k in self.labels}
 
         add_dict = self._transform_and_normalize_inference(example2["file_path_"],example2["file_path_mask_"], resize_to=self.size)
-        
+
         example2.update(add_dict)
 
         return example2
@@ -154,7 +156,7 @@ if __name__=="__main__":
     de_transform =  transforms.Compose([ transforms.Normalize(mean = [ 0., 0., 0. ],
                                                      std = [ 1/255, 1/255 ,1/255 ]),
                     ])
-    
+
     de_transform_mask =  transforms.Compose([ transforms.Normalize(mean = [ 0. ],
                                                      std = [ 1/255]),
                     ])
@@ -164,21 +166,18 @@ if __name__=="__main__":
     ip_train_loader = DataLoader(ip_train, batch_size=1, num_workers=4,
                           pin_memory=True, shuffle=True)
 
-    for idx, batch in enumerate(ip_train_loader):
+    for batch in ip_train_loader:
         im_keys = ['image', 'masked_image', 'mask']
         for k in im_keys:
             # print(batch[k].shape)               
             image_de = batch[k]
             image_de = (image_de + 1)/2
             image_de = rearrange(image_de, 'b h w c ->b c h w')
-            if k=="mask":
-                image_de = de_transform_mask(image_de)
-            else:
-                image_de = de_transform(image_de)
+            image_de = de_transform_mask(image_de) if k=="mask" else de_transform(image_de)
             # 'b c h w ->b h w c'
 
             rgb_img = (image_de).type(torch.uint8).squeeze(0)
-            
-            img = transforms.ToPILImage()(rgb_img)  
+
+            img = transforms.ToPILImage()(rgb_img)
             # print(img.size)
-            img.save("data/test_loader_inpaint/%s_test.jpg" % k)
+            img.save(f"data/test_loader_inpaint/{k}_test.jpg")

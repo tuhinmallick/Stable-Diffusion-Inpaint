@@ -87,10 +87,11 @@ def process_images(src_images, indir, outdir, config):
             mask_basename = os.path.join(outdir, os.path.splitext(file_relpath)[0])
             for i, idx in enumerate(mask_indices):
                 cur_image, cur_mask = filtered_image_mask_pairs[idx]
-                cur_basename = mask_basename + f'_crop{i:03d}'
-                Image.fromarray(np.clip(cur_mask * 255, 0, 255).astype('uint8'),
-                                mode='L').save(cur_basename + f'_mask{i:03d}.png')
-                cur_image.save(cur_basename + '.png')
+                cur_basename = f'{mask_basename}_crop{i:03d}'
+                Image.fromarray(
+                    np.clip(cur_mask * 255, 0, 255).astype('uint8'), mode='L'
+                ).save(f'{cur_basename}_mask{i:03d}.png')
+                cur_image.save(f'{cur_basename}.png')
         except KeyboardInterrupt:
             return
         except Exception as ex:

@@ -30,15 +30,13 @@ def simplest_countless(data):
   data is a 2D numpy array with even dimensions.
   """
   sections = []
-  
+
   # This loop splits the 2D array apart into four arrays that are
   # all the result of striding by 2 and offset by (0,0), (0,1), (1,0), 
   # and (1,1) representing the A, B, C, and D positions from Figure 1.
   factor = (2,2)
-  for offset in np.ndindex(factor):
-    part = data[tuple(np.s_[o::f] for o, f in zip(offset, factor))]
-    sections.append(part)
-
+  sections.extend(data[tuple(np.s_[o::f] for o, f in zip(offset, factor))]
+                  for offset in np.ndindex(factor))
   a, b, c, d = sections
 
   ab = a * (a == b) # PICK(A,B)
@@ -46,7 +44,7 @@ def simplest_countless(data):
   bc = b * (b == c) # PICK(B,C)
 
   a = ab | ac | bc # Bitwise OR, safe b/c non-matches are zeroed
-  
+
   return a + (a == 0) * d # AB || AC || BC || D
 
 def quick_countless(data):
@@ -57,15 +55,13 @@ def quick_countless(data):
   data is a 2D numpy array with even dimensions.
   """
   sections = []
-  
+
   # This loop splits the 2D array apart into four arrays that are
   # all the result of striding by 2 and offset by (0,0), (0,1), (1,0), 
   # and (1,1) representing the A, B, C, and D positions from Figure 1.
   factor = (2,2)
-  for offset in np.ndindex(factor):
-    part = data[tuple(np.s_[o::f] for o, f in zip(offset, factor))]
-    sections.append(part)
-
+  sections.extend(data[tuple(np.s_[o::f] for o, f in zip(offset, factor))]
+                  for offset in np.ndindex(factor))
   a, b, c, d = sections
 
   ab_ac = a * ((a == b) | (a == c)) # PICK(A,B) || PICK(A,C) w/ optimization
@@ -82,15 +78,13 @@ def quickest_countless(data):
   data is a 2D numpy array with even dimensions.
   """
   sections = []
-  
+
   # This loop splits the 2D array apart into four arrays that are
   # all the result of striding by 2 and offset by (0,0), (0,1), (1,0), 
   # and (1,1) representing the A, B, C, and D positions from Figure 1.
   factor = (2,2)
-  for offset in np.ndindex(factor):
-    part = data[tuple(np.s_[o::f] for o, f in zip(offset, factor))]
-    sections.append(part)
-
+  sections.extend(data[tuple(np.s_[o::f] for o, f in zip(offset, factor))]
+                  for offset in np.ndindex(factor))
   a, b, c, d = sections
 
   ab_ac = a * ((a == b) | (a == c)) # PICK(A,B) || PICK(A,C) w/ optimization
@@ -105,15 +99,13 @@ def quick_countless_xor(data):
   data is a 2D numpy array with even dimensions.
   """
   sections = []
-  
+
   # This loop splits the 2D array apart into four arrays that are
   # all the result of striding by 2 and offset by (0,0), (0,1), (1,0), 
   # and (1,1) representing the A, B, C, and D positions from Figure 1.
   factor = (2,2)
-  for offset in np.ndindex(factor):
-    part = data[tuple(np.s_[o::f] for o, f in zip(offset, factor))]
-    sections.append(part)
-
+  sections.extend(data[tuple(np.s_[o::f] for o, f in zip(offset, factor))]
+                  for offset in np.ndindex(factor))
   a, b, c, d = sections
 
   ab = a ^ (a ^ b) # a or b
@@ -131,15 +123,13 @@ def stippled_countless(data):
   data is a 2D numpy array with even dimensions.
   """
   sections = []
-  
+
   # This loop splits the 2D array apart into four arrays that are
   # all the result of striding by 2 and offset by (0,0), (0,1), (1,0), 
   # and (1,1) representing the A, B, C, and D positions from Figure 1.
   factor = (2,2)
-  for offset in np.ndindex(factor):
-    part = data[tuple(np.s_[o::f] for o, f in zip(offset, factor))]
-    sections.append(part)
-
+  sections.extend(data[tuple(np.s_[o::f] for o, f in zip(offset, factor))]
+                  for offset in np.ndindex(factor))
   a, b, c, d = sections
 
   ab_ac = a * ((a == b) | (a == c)) # PICK(A,B) || PICK(A,C) w/ optimization
@@ -380,11 +370,7 @@ def downsample_with_averaging(array):
   @return: The downsampled array, of the same type as x.
   """
 
-  if len(array.shape) == 3:
-    factor = (2,2,1)
-  else:
-    factor = (2,2)
-  
+  factor = (2, 2, 1) if len(array.shape) == 3 else (2, 2)
   if np.array_equal(factor[:3], np.array([1,1,1])):
     return array
 
@@ -490,7 +476,7 @@ def benchmark():
     # Output in tab separated format to enable copy-paste into excel/numbers
     print("%s\t%.3f\t%.3f\t%.2f" % (fn.__name__, mpx, mbytes, total_time))
     outimg = Image.fromarray(np.squeeze(result), formats[n_channels])
-    outimg.save('./results/{}.png'.format(fn.__name__, "PNG"))
+    outimg.save(f'./results/{fn.__name__}.png')
 
 if __name__ == '__main__':
   benchmark()

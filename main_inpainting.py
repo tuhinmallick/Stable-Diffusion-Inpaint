@@ -68,8 +68,8 @@ def get_parser(**parser_kwargs):
         nargs="*",
         metavar="base_config.yaml",
         help="paths to base configs. Loaded from left-to-right. "
-             "Parameters can be overwritten or added with command-line options of the form `--key value`.",
-        default=list(),
+        "Parameters can be overwritten or added with command-line options of the form `--key value`.",
+        default=[],
     )
     parser.add_argument(
         "-t",
@@ -116,7 +116,7 @@ def get_parser(**parser_kwargs):
         default="",
         help="post-postfix for default name",
     )
-    
+
     parser.add_argument(
         "-l",
         "--logdir",
@@ -199,9 +199,10 @@ class DataModuleFromConfig(pl.LightningDataModule):
             instantiate_from_config(data_cfg)
 
     def setup(self, stage=None):
-        self.datasets = dict(
-            (k, instantiate_from_config(self.dataset_configs[k]))
-            for k in self.dataset_configs)
+        self.datasets = {
+            k: instantiate_from_config(self.dataset_configs[k])
+            for k in self.dataset_configs
+        }
         if self.wrap:
             for k in self.datasets:
                 self.datasets[k] = WrappedDataset(self.datasets[k])
@@ -279,24 +280,25 @@ class SetupCallback(Callback):
                     os.makedirs(os.path.join(self.ckptdir, 'trainstep_checkpoints'), exist_ok=True)
             # print("Project config")
             # print(OmegaConf.to_yaml(self.config))
-            OmegaConf.save(self.config,
-                           os.path.join(self.cfgdir, "{}-project.yaml".format(self.now)))
+            OmegaConf.save(
+                self.config, os.path.join(self.cfgdir, f"{self.now}-project.yaml")
+            )
 
             print("Lightning config")
             print(OmegaConf.to_yaml(self.lightning_config))
-            OmegaConf.save(OmegaConf.create({"lightning": self.lightning_config}),
-                           os.path.join(self.cfgdir, "{}-lightning.yaml".format(self.now)))
+            OmegaConf.save(
+                OmegaConf.create({"lightning": self.lightning_config}),
+                os.path.join(self.cfgdir, f"{self.now}-lightning.yaml"),
+            )
 
-        else:
-            # ModelCheckpoint callback created log directory --- remove it
-            if not self.resume and os.path.exists(self.logdir):
-                dst, name = os.path.split(self.logdir)
-                dst = os.path.join(dst, "child_runs", name)
-                os.makedirs(os.path.split(dst)[0], exist_ok=True)
-                try:
-                    os.rename(self.logdir, dst)
-                except FileNotFoundError:
-                    pass
+        elif not self.resume and os.path.exists(self.logdir):
+            dst, name = os.path.split(self.logdir)
+            dst = os.path.join(dst, "child_runs", name)
+            os.makedirs(os.path.split(dst)[0], exist_ok=True)
+            try:
+                os.rename(self.logdir, dst)
+            except FileNotFoundError:
+                pass
 
 
 class ImageLogger(Callback):
@@ -389,7 +391,6 @@ class ImageLogger(Callback):
                 self.log_steps.pop(0)
             except IndexError as e:
                 print(e)
-                pass
             return True
         return False
 
