@@ -705,8 +705,9 @@ class UNetModel(nn.Module):
     
     '''NEEDS TO BE TUNED IN CASE OF HUGE ARCHITECTURAL CHANGES'''
     def fine_tune_attention_layers(self, use_spatial_transformer):
-        if not use_spatial_transformer:
-            '''
+        if use_spatial_transformer:
+            raise NotImplementedError(f'{self.__class__.__name__}(Spatial Attention)')
+        '''
             Each attention block is defined as:
             AttentionBlock(
                 (norm): GroupNorm32(32, 512, eps=1e-05, affine=True)
@@ -715,32 +716,34 @@ class UNetModel(nn.Module):
                 (proj_out): Conv1d(512, 512, kernel_size=(1,), stride=(1,))
             )
             '''
-            norm_indexes = []
-            keys_to_search = ["norm", "qkv", "proj_out"] # (attention) has no weights, just dot products attention mechanism
-           
-            for idx, (n,p) in enumerate(self.named_parameters()):
+        norm_indexes = []
+        keys_to_search = ["norm", "qkv", "proj_out"] # (attention) has no weights, just dot products attention mechanism
+
+        for idx, (n,p) in enumerate(self.named_parameters()):
                 # circuit to avoid useless loop
-                if "norm.weight" in n:
+            if "norm.weight" in n:
                     # check all subsequent keys are correct
                     # 2 is caused by bias
-                    cond = all([keys_to_search[idx_inner] in list(self.named_parameters())[idx + idx_inner*2][0] for idx_inner in range(1,len(keys_to_search))])
-                    # all in same layer
-                    if cond:
-                        norm_indexes.append((idx, idx  + len(keys_to_search) * 2))
-                    
-            if len(norm_indexes) > 0: # just if we find something
-                print("%s attention layers found, fine-tuning just them" % len(norm_indexes))
-                for n,p in self.named_parameters():
-                    p.requires_grad = False
-                for s,e in norm_indexes:
-                    for n,p in list(self.named_parameters())[s:e]:
-                        p.requires_grad = True
-                # for n,p in self.named_parameters():
-                #     print(n, p.requires_grad)
-            else:
-                print("No attention layers found, fine-tuning the entire network")
-        else: # TODO
-            raise NotImplementedError(self.__class__.__name__ + '(Spatial Attention)') 
+                cond = all(
+                    keys_to_search[idx_inner]
+                    in list(self.named_parameters())[idx + idx_inner * 2][0]
+                    for idx_inner in range(1, len(keys_to_search))
+                )
+                # all in same layer
+                if cond:
+                    norm_indexes.append((idx, idx  + len(keys_to_search) * 2))
+
+        if norm_indexes: # just if we find something
+            print(f"{len(norm_indexes)} attention layers found, fine-tuning just them")
+            for n,p in self.named_parameters():
+                p.requires_grad = False
+            for s,e in norm_indexes:
+                for n,p in list(self.named_parameters())[s:e]:
+                    p.requires_grad = True
+                    # for n,p in self.named_parameters():
+                    #     print(n, p.requires_grad)
+        else:
+            print("No attention layers found, fine-tuning the entire network") 
        
     def convert_to_fp16(self):
         """
@@ -787,10 +790,7 @@ class UNetModel(nn.Module):
             h = th.cat([h, hs.pop()], dim=1)
             h = module(h, emb, context)
         h = h.type(x.dtype)
-        if self.predict_codebook_ids:
-            return self.id_predictor(h)
-        else:
-            return self.out(h)
+        return self.id_predictor(h) if self.predict_codebook_ids else self.out(h)
 
 
 class EncoderUNetModel(nn.Module):
@@ -1005,12 +1005,8 @@ class EncoderUNetModel(nn.Module):
         if self.pool.startswith("spatial"):
             results.append(h.type(x.dtype).mean(dim=(2, 3)))
             h = th.cat(results, axis=-1)
-            return self.out(h)
         else:
             h = h.type(x.dtype)
-            # out = self.out(h)
-            # print(out.shape)
-            # exit()
-            # return out
-            return self.out(h)
+
+        return self.out(h)
 

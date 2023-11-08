@@ -7,7 +7,7 @@ target_image = "../custom_inpainting/mouse_keyboard/desk_pc_mouse2.png"
 mask_image = "../custom_inpainting/mouse_keyboard/desk_pc_mouse2_mask.png"
 
 reconstruction_folder = "../custom_inpainting/mouse_keyboard_reconstructed/"
-image_reconstruction = sorted([x for x in glob.glob(reconstruction_folder + "*.png")])
+image_reconstruction = sorted(list(glob.glob(f"{reconstruction_folder}*.png")))
 
 # TWO ROWS
 ##### ONE FOR INPUT AND MASK

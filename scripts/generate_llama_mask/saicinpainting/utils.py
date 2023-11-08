@@ -128,7 +128,7 @@ def get_shape(t):
     elif isinstance(t, numbers.Number):
         return type(t)
     else:
-        raise ValueError('unexpected type {}'.format(type(t)))
+        raise ValueError(f'unexpected type {type(t)}')
 
 
 def get_has_ddp_rank():
@@ -136,8 +136,12 @@ def get_has_ddp_rank():
     node_rank = os.environ.get('NODE_RANK', None)
     local_rank = os.environ.get('LOCAL_RANK', None)
     world_size = os.environ.get('WORLD_SIZE', None)
-    has_rank = master_port is not None or node_rank is not None or local_rank is not None or world_size is not None
-    return has_rank
+    return (
+        master_port is not None
+        or node_rank is not None
+        or local_rank is not None
+        or world_size is not None
+    )
 
 
 def handle_ddp_subprocess():

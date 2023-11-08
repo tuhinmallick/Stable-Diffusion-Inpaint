@@ -50,11 +50,9 @@ def _pyrdown_mask(mask : torch.Tensor, downsize : tuple=None, eps : float=1e-8, 
     if downsize is None:
         downsize = (mask.shape[2]//2, mask.shape[3]//2)
     assert mask.shape[1] == 1, "Expected shape for the input to be (n,1,height,width)"
-    if blur_mask == True:
+    if blur_mask:
         mask = gaussian_blur2d(mask, kernel_size=(5,5), sigma=(1.0,1.0))
-        mask = F.interpolate(mask, size=downsize,  mode='bilinear', align_corners=False)
-    else:
-        mask = F.interpolate(mask, size=downsize,  mode='bilinear', align_corners=False)
+    mask = F.interpolate(mask, size=downsize,  mode='bilinear', align_corners=False)
     if round_up:
         mask[mask>=eps] = 1
         mask[mask<eps] = 0
@@ -151,15 +149,23 @@ def _infer(
 
         if ref_lower_res is None:
             break
-        losses = {}
         ######################### multi-scale #############################
         # scaled loss with downsampler
         pred_downscaled = _pyrdown(pred[:,:,:orig_shape[0],:orig_shape[1]])
         mask_downscaled = _pyrdown_mask(mask[:,:1,:orig_shape[0],:orig_shape[1]], blur_mask=False, round_up=False)
         mask_downscaled = _erode_mask(mask_downscaled, ekernel=ekernel)
         mask_downscaled = mask_downscaled.repeat(1,3,1,1)
-        losses["ms_l1"] = _l1_loss(pred, pred_downscaled, ref_lower_res, mask, mask_downscaled, image, on_pred=True)
-
+        losses = {
+            "ms_l1": _l1_loss(
+                pred,
+                pred_downscaled,
+                ref_lower_res,
+                mask,
+                mask_downscaled,
+                image,
+                on_pred=True,
+            )
+        }
         loss = sum(losses.values())
         pbar.set_description("Refining scale {} using scale {} ...current loss: {:.4f}".format(scale_ind+1, scale_ind, loss.item()))
         if idi < n_iters - 1:
@@ -208,15 +214,11 @@ def _get_image_mask_pyramid(batch : dict, min_side : int, max_scales : int, px_b
         print(f"Original image too large for refinement! Resizing {(h_orig,w_orig)} to {(h,w)}...")
         image = resize(image, (h,w),interpolation='bilinear', align_corners=False)
         mask = resize(mask, (h,w),interpolation='bilinear', align_corners=False)
-        mask[mask>1e-8] = 1        
+        mask[mask>1e-8] = 1
     breadth = min(h,w)
-    n_scales = min(1 + int(round(max(0,np.log2(breadth / min_side)))), max_scales)        
-    ls_images = []
-    ls_masks = []
-    
-    ls_images.append(image)
-    ls_masks.append(mask)
-    
+    n_scales = min(1 + int(round(max(0,np.log2(breadth / min_side)))), max_scales)
+    ls_images = [image]
+    ls_masks = [mask]
     for _ in range(n_scales - 1):
         image_p = _pyrdown(ls_images[-1])
         mask_p = _pyrdown_mask(ls_masks[-1])
@@ -268,7 +270,9 @@ def refine_predict(
     first_resblock_ind = 0
     found_first_resblock = False
     for idl in range(len(inpainter.generator.model)):
-        if isinstance(inpainter.generator.model[idl], FFCResnetBlock) or isinstance(inpainter.generator.model[idl], ResnetBlock):
+        if isinstance(
+            inpainter.generator.model[idl], (FFCResnetBlock, ResnetBlock)
+        ):
             n_resnet_blocks += 1
             found_first_resblock = True
         elif not found_first_resblock:
@@ -276,9 +280,9 @@ def refine_predict(
     resblocks_per_gpu = n_resnet_blocks // len(gpu_ids)
 
     devices = [torch.device(gpu_id) for gpu_id in gpu_ids]
-    
-    # split the model into front, and rear parts    
-    forward_front = inpainter.generator.model[0:first_resblock_ind]
+
+    # split the model into front, and rear parts
+    forward_front = inpainter.generator.model[:first_resblock_ind]
     forward_front.to(devices[0])
     forward_rears = []
     for idd in range(len(gpu_ids)):
@@ -310,5 +314,5 @@ def refine_predict(
         # detach everything to save resources
         image = image.detach().cpu()
         mask = mask.detach().cpu()
-    
+
     return image_inpainted

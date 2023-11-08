@@ -113,16 +113,14 @@ def ssim_fid100_f1(metrics, fid_scale=100):
     ssim = metrics[('ssim', 'total')]['mean']
     fid = metrics[('fid', 'total')]['mean']
     fid_rel = max(0, fid_scale - fid) / fid_scale
-    f1 = 2 * ssim * fid_rel / (ssim + fid_rel + 1e-3)
-    return f1
+    return 2 * ssim * fid_rel / (ssim + fid_rel + 1e-3)
 
 
 def lpips_fid100_f1(metrics, fid_scale=100):
     neg_lpips = 1 - metrics[('lpips', 'total')]['mean']  # invert, so bigger is better
     fid = metrics[('fid', 'total')]['mean']
     fid_rel = max(0, fid_scale - fid) / fid_scale
-    f1 = 2 * neg_lpips * fid_rel / (neg_lpips + fid_rel + 1e-3)
-    return f1
+    return 2 * neg_lpips * fid_rel / (neg_lpips + fid_rel + 1e-3)
 
 
 
@@ -162,8 +160,7 @@ class InpaintingEvaluatorOnline(nn.Module):
     def _get_bins(self, mask_batch):
         batch_size = mask_batch.shape[0]
         area = mask_batch.view(batch_size, -1).mean(dim=-1).detach().cpu().numpy()
-        bin_indices = np.clip(np.searchsorted(self.bin_edges, area) - 1, 0, self.bins_num - 1)
-        return bin_indices
+        return np.clip(np.searchsorted(self.bin_edges, area) - 1, 0, self.bins_num - 1)
 
     def forward(self, batch: Dict[str, torch.Tensor]):
         """

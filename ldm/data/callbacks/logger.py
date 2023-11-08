@@ -99,7 +99,6 @@ class ImageLogger(Callback):
                 self.log_steps.pop(0)
             except IndexError as e:
                 print(e)
-                pass
             return True
         return False
 

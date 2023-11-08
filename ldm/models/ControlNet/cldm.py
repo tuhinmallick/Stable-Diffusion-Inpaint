@@ -35,11 +35,12 @@ class ControlledUnetModel(UNetModel):
         if control is not None:
             h += control.pop()
 
-        for i, module in enumerate(self.output_blocks):
-            if only_mid_control or control is None:
-                h = torch.cat([h, hs.pop()], dim=1)
-            else:
-                h = torch.cat([h, hs.pop() + control.pop()], dim=1)
+        for module in self.output_blocks:
+            h = (
+                torch.cat([h, hs.pop()], dim=1)
+                if only_mid_control or control is None
+                else torch.cat([h, hs.pop() + control.pop()], dim=1)
+            )
             h = module(h, emb, context)
 
         h = h.type(x.dtype)
@@ -102,15 +103,15 @@ class ControlNet(nn.Module):
         self.model_channels = model_channels
         if isinstance(num_res_blocks, int):
             self.num_res_blocks = len(channel_mult) * [num_res_blocks]
-        else:
-            if len(num_res_blocks) != len(channel_mult):
-                raise ValueError("provide num_res_blocks either as an int (globally constant) or "
-                                 "as a list/tuple (per-level) with the same length as channel_mult")
+        elif len(num_res_blocks) == len(channel_mult):
             self.num_res_blocks = num_res_blocks
+        else:
+            raise ValueError("provide num_res_blocks either as an int (globally constant) or "
+                             "as a list/tuple (per-level) with the same length as channel_mult")
         if disable_self_attentions is not None:
             # should be a list of booleans, indicating whether to disable self-attention in TransformerBlocks or not
             assert len(disable_self_attentions) == len(channel_mult)
-            
+
         if num_attention_blocks is not None:
             assert len(num_attention_blocks) == len(self.num_res_blocks)
             assert all(map(lambda i: self.num_res_blocks[i] >= num_attention_blocks[i], range(len(num_attention_blocks))))
@@ -131,7 +132,7 @@ class ControlNet(nn.Module):
         self.predict_codebook_ids = n_embed is not None
 
         time_embed_dim = model_channels * 4
-        
+
         self.time_embed = nn.Sequential(
             linear(model_channels, time_embed_dim),
             nn.SiLU(),
@@ -164,7 +165,7 @@ class ControlNet(nn.Module):
         #     nn.SiLU(),
         #     zero_module(conv_nd(dims, 256, model_channels, 3, padding=1))
         # )
-        
+
         self.input_hint_block = TimestepEmbedSequential(
             conv_nd(dims, hint_channels, 32, 3, padding=1),
             nn.SiLU(),
@@ -178,7 +179,7 @@ class ControlNet(nn.Module):
             nn.SiLU(),
             zero_module(conv_nd(dims, 256, model_channels, 3, padding=1))
         )
-        
+
         # self.input_hint_block = TimestepEmbedSequential(
         #     conv_nd(dims, hint_channels, 16, 3, padding=1),
         #     nn.SiLU(),
@@ -351,7 +352,7 @@ class ControlLDMInPaintConcat(LatentDiffusion):
         self.control_scales = [1.0] * 13
         self.concat_keys =("masked_image","mask")
         self.masked_image_key="masked_image"
-        ignore_keys = kwargs.pop("ignore_keys", list())
+        ignore_keys = kwargs.pop("ignore_keys", [])
         self.c_concat_log_start=0 # to log reconstruction of c_concat codes, first three channels in our case
         self.c_concat_log_end=3
         if exists(ckpt_path): self.init_from_ckpt(ckpt_path, ignore_keys)
@@ -361,10 +362,10 @@ class ControlLDMInPaintConcat(LatentDiffusion):
         # x, c = super().get_input(batch, self.first_stage_key, *args, **kwargs)
         z, c, x, xrec, xc = super().get_input(batch, self.first_stage_key, return_first_stage_outputs=True,
                                     force_c_encode=True, return_original_cond=True, bs=bs)
-        
+
         assert exists(self.concat_keys)
-        c_cat = list()
-        
+        c_cat = []
+
         # THE ORDER of self.concat_keys MUST BE AS IN INFERENCE
         for ck in self.concat_keys:
             # TODO: ATTENZIONE TOLTO REARRANGE (ORA RIMESSO)
@@ -373,36 +374,36 @@ class ControlLDMInPaintConcat(LatentDiffusion):
             if bs is not None:
                 cc = cc[:bs]
                 cc = cc.to(self.device)
-            bchw = z.shape
             if ck != self.masked_image_key:
+                bchw = z.shape
                 cc = torch.nn.functional.interpolate(cc, size=bchw[-2:])
             else:
                 cc = self.get_first_stage_encoding(self.encode_first_stage(cc))
             c_cat.append(cc)
         c_cat = torch.cat(c_cat, dim=1)
-        
+
         # NO CROSS ATTENTION
         all_concat = c_cat
-        
+
         # GET CONTROL
-        
+
         control = batch[self.control_key]
-        
+
         if bs is not None:
             control = control[:bs]
-        
+
         # # interpolate segmentation mask to latent space dimension
         # bchw = z.shape
         # control = torch.nn.functional.interpolate(control, size=bchw[-2:])
-            
+
         control = control.to(self.device)
         control = einops.rearrange(control, 'b h w c -> b c h w')
         control = control.to(memory_format=torch.contiguous_format).float()
-        
+
         # control = torch.cat(control, dim=1)
-        
+
         dict_cond = dict(control=control, c_concat=all_concat)
-        
+
         if return_first_stage_outputs:
             return z, dict_cond, x, xrec, xc
         return z, dict_cond
@@ -419,9 +420,14 @@ class ControlLDMInPaintConcat(LatentDiffusion):
         # cond_txt = torch.cat(cond['c_crossattn'], 1)
         control = self.control_model(x=x_noisy_c, hint=cond['control'], timesteps=t, context=cond_txt)
         control = [c * scale for c, scale in zip(control, self.control_scales)]
-       
-        eps = diffusion_model(x=x_noisy_c, timesteps=t, context=cond_txt, control=control, only_mid_control=self.only_mid_control)
-        return eps
+
+        return diffusion_model(
+            x=x_noisy_c,
+            timesteps=t,
+            context=cond_txt,
+            control=control,
+            only_mid_control=self.only_mid_control,
+        )
 
     @torch.no_grad()
     def log_images(self, batch, N=4, n_row=2, sample=True, ddim_steps=50, ddim_eta=0.0,plot_denoise_rows=False, 
@@ -436,18 +442,21 @@ class ControlLDMInPaintConcat(LatentDiffusion):
         c_cat, c_control = c["c_concat"][:N], c["control"][:N]
         N = min(z.shape[0], N)
         n_row = min(z.shape[0], n_row)
-        
+
         log["inputs"] = x
         log["reconstruction"] = self.decode_first_stage(z)
         log["control"] = c_control# (c_control + 1)/2
 
-        if not (self.c_concat_log_start is None and self.c_concat_log_end is None):
+        if (
+            self.c_concat_log_start is not None
+            or self.c_concat_log_end is not None
+        ):
             log["c_concat_decoded"] = self.decode_first_stage(c_cat[:,self.c_concat_log_start:self.c_concat_log_end])
 
 
         if plot_diffusion_rows:
             # get diffusion row
-            diffusion_row = list()
+            diffusion_row = []
             z_start = z[:n_row]
             for t in range(self.num_timesteps):
                 if t % self.log_every_t == 0 or t == self.num_timesteps - 1:
@@ -471,7 +480,7 @@ class ControlLDMInPaintConcat(LatentDiffusion):
                                                      ddim_steps=ddim_steps, eta=ddim_eta)
             x_samples = self.decode_first_stage(samples)
             log["samples"] = x_samples
-            
+
             if plot_denoise_rows:
                 denoise_grid = self._get_denoise_row_from_list(z_denoise_row)
                 log["denoise_row"] = denoise_grid

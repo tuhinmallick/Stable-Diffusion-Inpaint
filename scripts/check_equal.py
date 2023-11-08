@@ -2,9 +2,7 @@ from PIL import Image, ImageChops
 import numpy as np
 import cv2 
 def are_same_image(image1, image2):
-    if np.sum(np.array(ImageChops.difference(image1, image2).getdata())) == 0:
-        return True
-    return False
+    return np.sum(np.array(ImageChops.difference(image1, image2).getdata())) == 0
 
 
 # Load the images

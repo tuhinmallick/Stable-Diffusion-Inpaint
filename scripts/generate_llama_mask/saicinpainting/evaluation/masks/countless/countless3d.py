@@ -215,7 +215,7 @@ def dynamic_countless_generalized(data, factor):
   majority = int(math.ceil(float(mode_of) / 2))
 
   data += 1 # offset from zero
-  
+
   # This loop splits the 2D array apart into four arrays that are
   # all the result of striding by 2 and offset by (0,0), (0,1), (1,0), 
   # and (1,1) representing the A, B, C, and D positions from Figure 1.
@@ -231,28 +231,21 @@ def dynamic_countless_generalized(data, factor):
   for x,y in combinations(range(len(sections) - 1), 2):
     res = pick(sections[x], sections[y])
     subproblems[0][(x,y)] = res
-    if results2 is not None:
-      results2 = lor(results2, res)
-    else:
-      results2 = res
-
+    results2 = lor(results2, res) if results2 is not None else res
   results = [ results2 ]
   for r in range(3, majority+1):
     r_results = None
     for combo in combinations(range(len(sections)), r):
       res = pick(subproblems[0][combo[:-1]], sections[combo[-1]])
-      
+
       if combo[-1] != len(sections) - 1:
         subproblems[1][combo] = res
 
-      if r_results is not None:
-        r_results = lor(r_results, res)
-      else:
-        r_results = res
+      r_results = lor(r_results, res) if r_results is not None else res
     results.append(r_results)
     subproblems[0] = subproblems[1]
     subproblems[1] = {}
-    
+
   results.reverse()
   final_result = lor(reduce(lor, results), sections[-1]) - 1
   data -= 1

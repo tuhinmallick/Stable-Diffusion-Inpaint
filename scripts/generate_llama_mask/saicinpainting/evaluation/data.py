@@ -14,16 +14,11 @@ def load_image(fname, mode='RGB', return_orig=False):
     if img.ndim == 3:
         img = np.transpose(img, (2, 0, 1))
     out_img = img.astype('float32') / 255
-    if return_orig:
-        return out_img, img
-    else:
-        return out_img
+    return (out_img, img) if return_orig else out_img
 
 
 def ceil_modulo(x, mod):
-    if x % mod == 0:
-        return x
-    return (x // mod + 1) * mod
+    return x if x % mod == 0 else (x // mod + 1) * mod
 
 
 def pad_img_to_modulo(img, mod):
@@ -41,17 +36,10 @@ def pad_tensor_to_modulo(img, mod):
 
 
 def scale_image(img, factor, interpolation=cv2.INTER_AREA):
-    if img.shape[0] == 1:
-        img = img[0]
-    else:
-        img = np.transpose(img, (1, 2, 0))
-
+    img = img[0] if img.shape[0] == 1 else np.transpose(img, (1, 2, 0))
     img = cv2.resize(img, dsize=None, fx=factor, fy=factor, interpolation=interpolation)
 
-    if img.ndim == 2:
-        img = img[None, ...]
-    else:
-        img = np.transpose(img, (2, 0, 1))
+    img = img[None, ...] if img.ndim == 2 else np.transpose(img, (2, 0, 1))
     return img
 
 
@@ -129,8 +117,13 @@ class OurPrecomputedInpaintingResultsDataset(OurInpaintingDataset):
         if not datadir.endswith('/'):
             datadir += '/'
         self.predictdir = predictdir
-        self.pred_filenames = [os.path.join(predictdir, os.path.basename(os.path.splitext(fname)[0]) + f'_inpainted.{inpainted_suffix}')
-                               for fname in self.mask_filenames]
+        self.pred_filenames = [
+            os.path.join(
+                predictdir,
+                f'{os.path.basename(os.path.splitext(fname)[0])}_inpainted.{inpainted_suffix}',
+            )
+            for fname in self.mask_filenames
+        ]
         # self.pred_filenames = [os.path.join(predictdir, os.path.splitext(fname[len(datadir):])[0] + inpainted_suffix)
         #                        for fname in self.mask_filenames]
 
